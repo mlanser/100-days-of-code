@@ -1,10 +1,11 @@
-# #100DaysOfCode Log - Round 1 - [Your Name Here]
+# #100DaysOfCode Log - Round 1 - [Martin Lanser]
 
-The log of my #100DaysOfCode challenge. Started on [July 17, Monday, 2017].
+This is the official log for the 1st part of my #100DaysOfCode challenge. Started on [May 15, Friday, 2020].
 
 ## Log
 
-### R1D1 
-Started a Weather App. Worked on the draft layout of the app, struggled with OpenWeather API http://www.example.com
+### R1D1 - 15MAY2020
+Blah Blah
 
-### R1D2
+### R1D2 - 16MAY2020
+Blah blah
