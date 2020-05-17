@@ -10,5 +10,11 @@ This is the official log for the 1st part of my #100DaysOfCode challenge. Starte
 * Hoping to get through most of the book in next few days so that I can tackle a real application sometime next week.
 
 ### R1D2 - 16MAY2020
-* More progress with Python refresher.
+* More progress with Python refresher. Strings, bytes, lists, and dictionaries.
 * Also taking sneak peek at the [Cement CLI framework](https://builtoncement.com/). Cement is very easy to install and seems to have great documentation and tutorials.
+
+### R1D3 - 17MAY2020
+* Yet more Python refresher.
+* Played with loops and some trivial text processing.
+* Played with functions and docstrings.
+* Tried out executing sample app from both within Oython environment and from CLI.
