@@ -14,7 +14,13 @@ This is the official log for the 1st part of my #100DaysOfCode challenge. Starte
 * Also taking sneak peek at the [Cement CLI framework](https://builtoncement.com/). Cement is very easy to install and seems to have great documentation and tutorials.
 
 ### R1D3 - 17MAY2020
-* Yet more Python refresher.
+* Yet more Python refresher - strings, collections, loops, and a bit of modularity :-)
 * Played with loops and some trivial text processing.
 * Played with functions and docstrings.
-* Tried out executing sample app from both within Oython environment and from CLI.
+* Tried out executing sample app from both within Python environment and from CLI.
+
+### R1D4 - 18MAY2020
+* Yet more Python refresher - the Python object model, some more built-in collection types, variable scopes, and other fun :-|
+* Played with loops and some trivial text processing.
+* Checked out a few awesome Python packages recommended in [this Medium article](https://medium.com/tech-explained/top-15-python-packages-you-must-try-c6a877ed3cd0). 
+

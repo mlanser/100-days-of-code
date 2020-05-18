@@ -2,6 +2,9 @@
 
 """Retrieve and print words from a URL.
 
+Note:
+    This version uses tuples :-)
+
 Usage:
     python looploop.py <URL>
 """
@@ -16,21 +19,25 @@ def fetch_words(url):
         url: The URL of a UTF-8 text document.
         
     Returns:
-        A list of strings containing the words from
-        the document.
+        Tuple with a list of strings containing the words from
+        the document, total number of lines, and total number of chars.
     """
     
     story_words = []
-
+    chars = 0
+    lines = 0
+    
     with urlopen(url) as story:
     
         for line in story:
+            lines += 1
             line_words = line.decode('utf-8').split()
         
             for word in line_words:
+                chars += len(word)
                 story_words.append(word)
 
-    return story_words
+    return story_words, lines, chars
 
 
 def count_chars(words):
@@ -51,19 +58,26 @@ def count_chars(words):
     return chars    
 
 
-def print_stats(words):
+def print_stats(words, lines = None, chars = None):
     """Print basic stats for a list of words.
     
     Args:
-        words: List of words.
+        words: list of words.
+        lines: number of lines.
+        chars: number of chars in all words.
     """
     
-    chars = count_chars(words)
+    if chars == None:
+        chars = count_chars(words)
     
     print('='.center(60, '='))
     print("Some core stats:\n")
-    print("Num chars: " + str(chars))           
-    print("Num words: " + str(len(words)) + "\n")
+    
+    if lines != None:
+        print("Num lines: {}".format(lines))
+    
+    print("Num words: {}".format(len(words)))
+    print("Num chars: {}\n".format(chars))           
 
     
 def print_words(words):
@@ -87,9 +101,9 @@ def main(url):
         url: The URL of a UTF-8 text document.
     """
     
-    words = fetch_words(url)
+    words, lines, chars = fetch_words(url)
     
-    print_stats(words)
+    print_stats(words, lines, chars)
     print_words(words)
     
 
