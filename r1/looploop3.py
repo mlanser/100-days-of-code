@@ -3,10 +3,10 @@
 """Retrieve and print words from a URL.
 
 Note:
-    This version uses tuples :-)
+    This version uses (primitive) exception handling :-)
 
 Usage:
-    python looploop2.py <URL>
+    python looploop3.py <URL>
 """
 
 import sys
@@ -27,16 +27,19 @@ def fetch_words(url):
     chars = 0
     lines = 0
     
-    with urlopen(url) as story:
-    
-        for line in story:
-            lines += 1
-            line_words = line.decode('utf-8').split()
-        
-            for word in line_words:
-                chars += len(word)
-                story_words.append(word)
+    try:
+        with urlopen(url) as story:
 
+            for line in story:
+                lines += 1
+                line_words = line.decode('utf-8').split()
+
+                for word in line_words:
+                    chars += len(word)
+                    story_words.append(word)
+    except ValueError as e:
+        print("\nERROR: {}\n".format(str(e)), file=sys.stderr)
+        
     return story_words, lines, chars
 
 
@@ -108,8 +111,10 @@ def main(url):
     
 
 if __name__ == '__main__':
+    defaultURL = 'http://sixty-north.com/c/t.txt'
     
-    if len(sys.argv) > 1:
+    try:
         main(sys.argv[1])
-    else:    
-        main('http://sixty-north.com/c/t.txt')
+    except IndexError:
+        print("\nWARNING: Missing URL. Will use default URL '" + defaultURL + "' for this operation.\n")
+        main(defaultURL)

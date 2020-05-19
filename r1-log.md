@@ -24,3 +24,7 @@ This is the official log for the 1st part of my #100DaysOfCode challenge. Starte
 * Played with loops and some trivial text processing.
 * Checked out a few awesome Python packages recommended in [this Medium article](https://medium.com/tech-explained/top-15-python-packages-you-must-try-c6a877ed3cd0). 
 
+### R1D5 - 19MAY2020
+* More Python refresher - some exception handling in Python, some more built-in collection types, variable scopes, and other fun :-|
+* Played mostly with exception handling.
+
