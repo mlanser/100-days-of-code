@@ -28,3 +28,7 @@ This is the official log for the 1st part of my #100DaysOfCode challenge. Starte
 * More Python refresher - some exception handling in Python, some more built-in collection types, variable scopes, and other fun :-|
 * Played mostly with exception handling.
 
+### R1D6 - 20MAY2020
+* More Python refresher - comprehensions, iteration protocols, and generator functions ... ugh :-(
+* That's it ... brain still fried!
+
