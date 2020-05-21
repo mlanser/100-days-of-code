@@ -32,3 +32,7 @@ This is the official log for the 1st part of my #100DaysOfCode challenge. Starte
 * More Python refresher - comprehensions, iteration protocols, and generator functions ... ugh :-(
 * That's it ... brain still fried!
 
+### R1D7 - 21MAY2020
+* More Python refresher - revisiting comprehensions and some examples from yesterday. Still trying to wrap my head around this ... :-|
+* Working with Python classes.
+
