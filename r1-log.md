@@ -36,3 +36,5 @@ This is the official log for the 1st part of my #100DaysOfCode challenge. Starte
 * More Python refresher - revisiting comprehensions and some examples from yesterday. Still trying to wrap my head around this ... :-|
 * Working with Python classes.
 
+### R1D8 - 22MAY2020
+* More Python refresher - classes and methods and inheritance ... that's it for today :-)
