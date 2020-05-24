@@ -1,6 +1,8 @@
 # #100DaysOfCode Log - Round 1 - [Martin Lanser]
 
-This is the official log for the 1st part of my #100DaysOfCode challenge. Started on [May 15, Friday, 2020].
+This is the official log for the 1st part of my #100DaysOfCode challenge. I'm essentially following the examples in "[The Python Apprentice](http://leanpub.com/python-apprentice)" book.
+
+Started on [May 15, Friday, 2020].
 
 ## Log
 
