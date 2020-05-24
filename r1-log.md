@@ -40,5 +40,5 @@ This is the official log for the 1st part of my #100DaysOfCode challenge. Starte
 * More Python refresher - classes and methods and inheritance ... that's it for today :-)
 
 ### R1D9 - 23MAY2020
-* More Python refresher - more work and re-work using classes and methods and inheritance. Needed to get this straight in my head. :-)\
-* Also worked with files - reading, writing, parsing, etc.
+* More Python refresher - more work and re-work using classes and methods and inheritance. Needed to get this straight in my head. :-)
+* Also worked quite a bit with files - reading, writing, parsing, etc.
