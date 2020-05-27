@@ -19,5 +19,5 @@ Started on [May 24, Sunday, 2020].
 * Also reviewing lambda functions, extended parameter syntax, extended call syntax ... my head hurts!
 
 ### R2D3 - 27MAY2020
-* Spent so,me qualitytime trying to wrap my head around Python closures and decorators.
+* Spent some quality time trying to wrap my head around Python closures and decorators.
 * Deep dive into class attributes, methods, properties, inheritance, and so on.
