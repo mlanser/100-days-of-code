@@ -14,4 +14,8 @@ Started on [May 24, Sunday, 2020].
 * More time with Python modules, packages, subpackages, namespaces, and stuff :-)
 * Learning learning learning ... about __init__.py, __main__.py, executable directories, and more.
 
+### R2D3 - 26MAY2020
+* More on functions, callable object, classes, and stuff :-)
+* Also reviewing lambda functions, extended parameter syntax, extended call syntax ... my head hurts!
+
 
