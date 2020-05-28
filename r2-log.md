@@ -21,3 +21,6 @@ Started on [May 24, Sunday, 2020].
 ### R2D3 - 27MAY2020
 * Spent some quality time trying to wrap my head around Python closures and decorators.
 * Deep dive into class attributes, methods, properties, inheritance, and so on.
+
+### R2D4 - 28MAY2020
+* Working on strings ... that's it :-)
