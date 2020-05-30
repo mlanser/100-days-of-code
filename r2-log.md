@@ -24,3 +24,6 @@ Started on [May 24, Sunday, 2020].
 
 ### R2D4 - 28MAY2020
 * Working on strings ... that's it :-)
+
+### R2D5 - 29MAY2020
+* Working on numeric and scalar types ... it's been a long week, so this is it for today :-|
