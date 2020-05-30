@@ -27,3 +27,8 @@ Started on [May 24, Sunday, 2020].
 
 ### R2D5 - 29MAY2020
 * Working on numeric and scalar types ... it's been a long week, so this is it for today :-|
+
+### R2D6 - 30MAY2020
+* Rereading reworking examples with numeric and scalar types.
+* Working dates and time ... maybe with end of times?
+* More about iterables and iterations ... head hurts ... again!
