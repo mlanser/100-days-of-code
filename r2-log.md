@@ -35,3 +35,6 @@ Started on [May 24, Sunday, 2020].
 
 ### R2D7 - 31MAY2020
 * Deeper dive into inheritance and polymorphism :-|
+
+### R2D8 - 01JUN2020
+* Deeper dive into implementing collections ... this is still so hazy ... ugh :-|
