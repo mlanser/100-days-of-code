@@ -38,3 +38,9 @@ Started on [May 24, Sunday, 2020].
 
 ### R2D8 - 01JUN2020
 * Deeper dive into implementing collections ... this is still so hazy ... ugh :-|
+
+### R2D9 - 02JUN2020
+* More work with collections :-|
+
+### R2D10 - 03JUN2020
+* Finished work with collections :-)
