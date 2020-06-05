@@ -44,3 +44,6 @@ Started on [May 24, Sunday, 2020].
 
 ### R2D10 - 03JUN2020
 * Finished work with collections :-)
+
+### R2D11 - 03JUN2020
+* Deep dive into Python error and exception handling :-)
