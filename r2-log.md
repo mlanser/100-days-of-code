@@ -45,5 +45,11 @@ Started on [May 24, Sunday, 2020].
 ### R2D10 - 03JUN2020
 * Finished work with collections :-)
 
-### R2D11 - 03JUN2020
+### R2D11 - 04JUN2020
 * Deep dive into Python error and exception handling :-)
+
+### R2D12 - 05JUN2020
+* Deep dive into Python context managers ... ugh :-|
+
+### R2D13 - 06JUN2020
+* Deep dive into Python introspection ... more ugh :-|
