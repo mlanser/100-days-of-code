@@ -53,3 +53,6 @@ Started on [May 24, Sunday, 2020].
 
 ### R2D13 - 06JUN2020
 * Deep dive into Python introspection ... more ugh :-|
+
+### R2D14 - 07JUN2020
+* Reviewing context managers band introspectoin again ... coz it didn't stick that well first time around :-|
