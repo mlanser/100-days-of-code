@@ -2,7 +2,7 @@
 
 This is the official log for the 2nd part of my #100DaysOfCode challenge. I'm essentially following the examples in "[The Python Journeyman](http://leanpub.com/python-journeyman)" book.
 
-Started on [May 24, Sunday, 2020].
+Started on [Sunday May 24, 2020].
 
 ## Log
 
