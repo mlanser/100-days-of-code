@@ -8,5 +8,8 @@ Started on [Monday June 8, 2020].
 
 ### R3D1 - 08JUN2020
 * Installed Cement framework.
-* Started work on sample TODO app to laern this framework.
+* Started work on sample TODO app to learn this framework.
+
+### R3D2 - 09JUN2020
+* Continued work on sample TODO app.
 

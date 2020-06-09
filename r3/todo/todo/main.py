@@ -9,12 +9,12 @@ from .controllers.base import Base
 from .controllers.items import Items
 
 def extend_tinydb(app):
-    app.log.info('extending todo application with tinydb')
+    #app.log.info('extending todo application with tinydb')
     db_file = app.config.get('todo', 'db_file')
     
     # ensure that we expand the full path
     db_file = fs.abspath(db_file)
-    app.log.info('tinydb database file is: %s' % db_file)
+    #app.log.info('tinydb database file is: %s' % db_file)
     
     # ensure our parent directory exists
     db_dir = os.path.dirname(db_file)
@@ -27,6 +27,7 @@ def extend_tinydb(app):
 # configuration defaults
 CONFIG = init_defaults('todo')
 CONFIG['todo']['db_file'] = '~/.todo/db.json'
+CONFIG['todo']['email'] = 'martinlanser@gmail.com'
 
 
 class Todo(App):
