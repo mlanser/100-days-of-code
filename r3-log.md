@@ -13,3 +13,7 @@ Started on [Monday June 8, 2020].
 ### R3D2 - 09JUN2020
 * Continued work on sample TODO app.
 
+### R3D3 - 10JUN2020
+* Installed cliff CLI framework.
+* Started work on sample TODO app to learn this framework.
+* Goal is is to compare Cement and cliff frameworks
