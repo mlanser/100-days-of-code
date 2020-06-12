@@ -17,3 +17,7 @@ Started on [Monday June 8, 2020].
 * Installed cliff CLI framework.
 * Started work on sample TODO app to learn this framework.
 * Goal is is to compare Cement and cliff frameworks
+
+### R3D4 - 11JUN2020
+* Playing more with Cement framework.
+* Learning more about interfaces, handlers, and hooks.
