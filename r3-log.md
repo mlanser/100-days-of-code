@@ -21,3 +21,11 @@ Started on [Monday June 8, 2020].
 ### R3D4 - 11JUN2020
 * Playing more with Cement framework.
 * Learning more about interfaces, handlers, and hooks.
+
+### R3D5 - 12JUN2020
+* Playing more with hooks and handlers in Cement framework.
+
+### R3D6 - 13JUN2020
+* Playing with configuration mgmt in Cement framework.
+* More on hooks and handlers.
+

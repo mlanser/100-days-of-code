@@ -110,9 +110,10 @@ def one_more_function():
 # ===============================================
 #   C O N F I G U R A T I O N   D E F A U L T S
 # ===============================================
-CONFIG = init_defaults('todo')
+CONFIG = init_defaults('todo', 'log.logging')
 CONFIG['todo']['db_file'] = '~/.todo/db.json'
 CONFIG['todo']['email'] = 'martinlanser@gmail.com'
+CONFIG['log.logging']['level'] = 'info'
 
 
 
@@ -145,10 +146,10 @@ class Todo(App):
         ]
 
         # configuration handler
-        config_handler = 'yaml'
+        #config_handler = 'yaml'
 
         # configuration file suffix
-        config_file_suffix = '.yml'
+        #config_file_suffix = '.yml'
 
         # set the log handler
         log_handler = 'colorlog'
@@ -195,6 +196,10 @@ class TodoTest(TestApp,Todo):
 def main():
     with Todo() as app:
         app.hook.register('my_second_hook', one_more_function)
+        
+        print(app.config.get('todo', 'db_file'))
+        print(app.config.get('todo', 'email'))
+        print(app.config.keys('todo'))
         
         try:
             app.handler.get('greeting', 'hello', setup=True).greet('Martin')
