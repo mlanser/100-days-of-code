@@ -1,18 +1,19 @@
 
 from cement import App, TestApp, init_defaults
 from cement.core.exc import CaughtSignal
-from .core.exc import MyAppError
+from .core.exc import SpeedTestError
 from .controllers.base import Base
 
 # configuration defaults
-CONFIG = init_defaults('myapp', 'log.logging')
-CONFIG['log.logging']['file'] = 'myapp.log'
+CONFIG = init_defaults('speedtest')
+CONFIG['speedtest']['foo'] = 'bar'
 
-class MyApp(App):
-    """My Application primary application."""
+
+class SpeedTest(App):
+    """SpeedTest primary application."""
 
     class Meta:
-        label = 'myapp'
+        label = 'speedtest'
 
         # configuration defaults
         config_defaults = CONFIG
@@ -45,25 +46,18 @@ class MyApp(App):
         ]
 
 
-class MyAppTest(TestApp,MyApp):
-    """A sub-class of MyApp that is better suited for testing."""
+class SpeedTestTest(TestApp,SpeedTest):
+    """A sub-class of SpeedTest that is better suited for testing."""
 
     class Meta:
-        label = 'myapp'
+        label = 'speedtest'
 
 
 def main():
-    with MyApp() as app:
+    with SpeedTest() as app:
         try:
             app.run()
-            
-            # log messages to different levels
-            app.log.debug('This is a debug message')
-            app.log.info('This is an info message')
-            app.log.warning('This is an warning message')
-            app.log.error('This is an error message')
-            app.log.fatal('This is a fatal message')
-    
+
         except AssertionError as e:
             print('AssertionError > %s' % e.args[0])
             app.exit_code = 1
@@ -72,8 +66,8 @@ def main():
                 import traceback
                 traceback.print_exc()
 
-        except MyAppError as e:
-            print('MyAppError > %s' % e.args[0])
+        except SpeedTestError as e:
+            print('SpeedTestError > %s' % e.args[0])
             app.exit_code = 1
 
             if app.debug is True:

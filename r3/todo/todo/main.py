@@ -78,12 +78,12 @@ class Goodbye(GreetingHandler):
 #        M I S C .   E X T E N S I O N S
 # ===============================================
 def extend_tinydb(app):
-    #app.log.info('extending todo application with tinydb')
+    app.log.info('extending todo application with tinydb')
     db_file = app.config.get('todo', 'db_file')
     
     # ensure that we expand the full path
     db_file = fs.abspath(db_file)
-    #app.log.info('tinydb database file is: %s' % db_file)
+    app.log.info('tinydb database file is: %s' % db_file)
     
     # ensure our parent directory exists
     db_dir = os.path.dirname(db_file)
@@ -94,14 +94,17 @@ def extend_tinydb(app):
 
 
 def my_hook_function(app):
+    app.log.info('Printing MY HOOK message')
     print('Hooky Mac Hookster!')
 
     
-def another_hook_function():
+def another_hook_function(app=None):
+    #app.log.debug('Called ANOTHER HOOK')
     return 'Boink!'
 
 
-def one_more_function():
+def one_more_function(app=None):
+    #app.log.debug('Called ONE MORE')
     return 'Second boink!'
 
     
@@ -113,7 +116,8 @@ def one_more_function():
 CONFIG = init_defaults('todo', 'log.logging')
 CONFIG['todo']['db_file'] = '~/.todo/db.json'
 CONFIG['todo']['email'] = 'martinlanser@gmail.com'
-CONFIG['log.logging']['level'] = 'info'
+CONFIG['log.logging']['level'] = 'DEBUG'
+CONFIG['log.logging']['file'] = '~/.todo/log/todo.log'
 
 
 
@@ -166,7 +170,7 @@ class Todo(App):
         ]
         
         hooks = [
-            ('pre_setup', my_hook_function),
+            ('post_setup', my_hook_function),
             ('post_setup', extend_tinydb),
             ('my_example_hook', another_hook_function),
         ]
@@ -197,13 +201,21 @@ def main():
     with Todo() as app:
         app.hook.register('my_second_hook', one_more_function)
         
+        print(app.config.keys('todo'))
         print(app.config.get('todo', 'db_file'))
         print(app.config.get('todo', 'email'))
-        print(app.config.keys('todo'))
+        print(app.config.keys('log.logging'))
+        print(app.config.get('log.logging', 'file'))
         
         try:
             app.handler.get('greeting', 'hello', setup=True).greet('Martin')
-            
+    
+            app.log.debug('This is a debug message')
+            app.log.info('This is an info message')
+            app.log.warning('This is an warning message')
+            app.log.error('This is an error message')
+            app.log.fatal('This is a fatal message')
+    
             for res in app.hook.run('my_example_hook'):
                 print(res)
             for res in app.hook.run('my_second_hook'):

@@ -29,3 +29,6 @@ Started on [Monday June 8, 2020].
 * Playing with configuration mgmt in Cement framework.
 * More on hooks and handlers.
 
+### R3D7 - 14JUN2020
+* Playing with arg parsing, logging, and controllers in Cement framework.
+

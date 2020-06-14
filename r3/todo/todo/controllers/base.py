@@ -17,7 +17,7 @@ class Base(Controller):
         description = 'A sample TODO app created with Cement'
 
         # text displayed at the bottom of --help output
-        epilog = 'Usage: todo command1 --foo bar'
+        epilog = 'Usage: todo <command> [--flag] [args [...]]'
 
         # controller level arguments. ex: 'todo --version'
         arguments = [
