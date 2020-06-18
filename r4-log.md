@@ -13,3 +13,14 @@ Started on [Sunday June 14, 2020].
 ### R4D2 - 15JUN2020
 * Hit some major roadblocks. Starting over with 'Click' framework.
 * Started work on sample weather info app that gets data from [OpenWeatherMap.org](https://openweathermap.org)
+
+### R4D3 - 16JUN2020
+* More work on sample weather info app.
+* Also checking out [DietPi](https://dietpi.com/) OS for RPI
+
+### R4D4 - 17JUN2020
+* Working on another Click sample app to create QR code for Wifi network creds.
+
+### R4D5 - 18JUN2020
+* Continuing working on Wifi QR code sample app.
+

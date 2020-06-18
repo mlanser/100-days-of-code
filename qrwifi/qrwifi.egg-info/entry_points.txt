@@ -1,0 +1,3 @@
+[console_scripts]
+qrwifi = qrwifi.cli:start
+

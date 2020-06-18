@@ -1,0 +1,11 @@
+setup.py
+qrwifi/__init__.py
+qrwifi/app.py
+qrwifi/cli.py
+qrwifi/functions.py
+qrwifi.egg-info/PKG-INFO
+qrwifi.egg-info/SOURCES.txt
+qrwifi.egg-info/dependency_links.txt
+qrwifi.egg-info/entry_points.txt
+qrwifi.egg-info/requires.txt
+qrwifi.egg-info/top_level.txt
