@@ -4,6 +4,7 @@ import click
 
 from .functions import wifi_qr, qr2array
 
+
 # =========================================================
 #
 # Usage: 

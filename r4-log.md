@@ -23,4 +23,8 @@ Started on [Sunday June 14, 2020].
 
 ### R4D5 - 18JUN2020
 * Continuing working on Wifi QR code sample app.
+* Start work on new more comprehensive Wifi app.
+
+### R4D6 - 19JUN2020
+* Continuing working on Wifi2 app.
 
