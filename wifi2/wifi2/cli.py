@@ -5,7 +5,8 @@ import numpy as np
 import pyqrcode as pq
 import click
 
-from .utils.settings import read_settings, write_settings
+from .utils.settings import read_settings, save_settings, isvalid_settings
+from .utils.qr import wifi_qr
 
 
 
@@ -55,7 +56,7 @@ def current_weather(location, api_key='OWM_API_KEY'):
 @click.option(
     '--config',
     type=click.Path(),
-    default='~/.wifi2.cfg',
+    default='~/.wifi2.ini',
     help='Name of config file to use.',
 )
 @click.pass_context
@@ -71,75 +72,54 @@ def main(ctx, config: str = ''):
     Blah blah blah blah blah blah blah blah blah blah blah blah
      blah blah.
     """
-    configFName = os.path.expanduser(config)
-    if os.path.exists(configFName):
-        ctx.obj['configFName'] = configFName
-        ctx.obj['settings'] = read_settings(configFName)
-        click.echo("TEST-V1: {}".format(ctx.obj['settings']['test']['v1']))
-        click.echo("TEST-V2: {}".format(ctx.obj['settings']['test']['v2']))
-        click.echo("TEST-V3: {}".format(ctx.obj['settings']['test']['v3']))
-    #    with open(filename) as cfg:
-    #        api_key = cfg.read()
-    #
+    
+    ctx.obj['configFName'] = os.path.expanduser(config)
+        
+        
+@main.command()
+@click.option(
+    '--section',
+    type=click.Choice(['wifi', 'data', 'speedtest']),
+    default='',
+    help='Config file section name.',
+)
+@click.pass_context
+def configure(ctx, section: str = ''):
+    """
+    Define and store configuration values for a given section in the config file.
+    """
+    if section.lower() in ['wifi', 'data', 'speedtest']:
+        save_settings(ctx.obj['configFName'], section.lower())
     else:
-        raise click.ClickException("Config file '{}' does NOT exist".format(configFName))
-
-        
-        
-@main.command()
-@click.option(
-    '--ssid',
-    default='',
-    help='WiFi SSID name.',
-)
-@click.option(
-    '--security',
-    type=click.Choice(['WEP', 'WPA', '']),
-    default='',
-    help='WiFi security protocol.',
-)
-@click.option(
-    '--pswd', '--password',
-    default='',
-    help='WiFi password.',
-)
-@click.option(
-    '--data',
-    type=click.Path(),
-    default='JSON:~/wifi2.json',
-    help='Name of WiFi stats data file. If JSON file exists, it will be overwritten.',
-)
-@click.pass_context
-def configure(ctx, ssid: str = '', security: str = '', pswd: str = '', data: str = ''):
-    """
-    Store configuration values in a file.
-    """
-    pass
-    
-    #config_file = ctx.obj['config_file']
-
-    #api_key = click.prompt(
-    #    "Please enter your API key",
-    #    default=ctx.obj.get('api_key', '')
-    #)
-
-    #with open(config_file, 'w') as cfg:
-    #    cfg.write(api_key)
-    
-
+        raise click.BadParameter("Invalid section '{}'".format(section))
     
     
 @main.command()
-@click.argument('show-how')
+@click.option(
+    '--show-how',
+    type=click.Choice(['terminal', 'png']),
+    default='terminal',
+    help='Display QR code in terminal or save to file.',
+)
+@click.option('--filename', help='full path to the png file')
 @click.pass_context
-def show_qr(ctx, show_how):
+def show_qr(ctx, show_how, filename=''):
     """
     Show QR code for WiFi credentials.
     """
-    api_key = ctx.obj['api_key']
+    ctx.obj['settings'] = read_settings(ctx.obj['configFName'])
+    if not isvalid_settings(ctx.obj['settings']):
+        raise click.ClickException("Invalid and/or incomplete config info!")
 
-    weather = current_weather(location, api_key)
-    print(f"The weather in {location} right now: {weather}.")
+    qr = wifi_qr(ctx.obj['settings']['wifi']['ssid'], ctx.obj['settings']['wifi']['security'], ctx.obj['settings']['wifi']['password'])
+        
+    if show_how.lower() == 'terminal':
+        #print(qr.terminal())
+        click.echo(qr.terminal())
+    else:
+        #scale = 10
+        #qr.png(filename, scale)
+        click.echo('Saving QR code to some file somewhere')
     
     
 @main.command()
@@ -150,9 +130,11 @@ def show_msg(ctx, msg: str = 'Testing 1-2-3'):
     Show message.
     """
     click.echo(msg)
-    
 
 
+# =========================================================
+#              A P P   S T A R T   S E C T I O N
+# =========================================================
 def start():
     main(obj={})
 
