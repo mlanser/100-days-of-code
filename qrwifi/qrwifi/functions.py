@@ -4,7 +4,7 @@ import pyqrcode as pq
 
 def wifi_qr(ssid: str, security: str, password: str):
     """
-    Creates WiFi QR code object
+    Create WiFi QR code object
     """
     qr = pq.create(f'WIFI:S:{ssid};T:{security};P:{password};;')
     return qr
@@ -12,7 +12,7 @@ def wifi_qr(ssid: str, security: str, password: str):
 
 def qr2array(qr):
     """
-    Convert a QR code object into its array representation.
+    Convert QR code object into array representation.
     """
     arr = []
     for line in qr.text().split('\n'):
@@ -23,6 +23,6 @@ def qr2array(qr):
 
 def png_b64(qr, scale: int = 10):
     """
-    Return the base64 encoded PNG of the QR code.
+    Return base64 encoded PNG of QR code.
     """
     return qr.png_data_uri(scale=scale)
