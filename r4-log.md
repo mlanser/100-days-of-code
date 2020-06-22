@@ -28,3 +28,9 @@ Started on [Sunday June 14, 2020].
 ### R4D6 - 19JUN2020
 * Continuing working on Wifi2 app.
 
+### R4D7 - 20JUN2020
+* Added config mgmt and QR code generation for Wifi2 app.
+
+### R4D8 - 21JUN2020
+* Added speed test code and a bit more error handling to Wifi2 app.
+

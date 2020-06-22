@@ -6,7 +6,7 @@ setup(
       author_email='martinlanser@gmail.com',
       packages=['wifi2'],
       package_data={},
-      install_requires=['pyqrcode', 'numpy', 'click', 'configparser', 'requests'],
+      install_requires=['pyqrcode', 'pypng', 'numpy', 'click', 'configparser', 'requests', 'speedtest-cli'],
       entry_points={
         'console_scripts': ['wifi2 = wifi2.cli:start']
       }

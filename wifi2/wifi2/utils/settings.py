@@ -5,13 +5,13 @@ import click
 
 def get_wifi_settings():
     ssid = click.prompt("Enter network SSID")
-    security = click.prompt("Enter WiFi security", type=click.Choice(['WAP', 'WEP']))
+    security = click.prompt("Enter WiFi security", type=click.Choice(['WAP', 'WEP'], case_sensitive=False))
     password = click.prompt("Enter WiFi password")
     
     settings = {
         'wifi': {
             'ssid': ssid,
-            'security': security,
+            'security': security.upper(),
             'password': password,
             }
         }
@@ -19,9 +19,20 @@ def get_wifi_settings():
     return settings
 
 
+def validate_wifi_settings(settings):
+    if not settings.has_option('wifi', 'ssid'): 
+        return False
+    if not settings.has_option('wifi', 'security'): 
+        return False
+    if not settings.has_option('wifi', 'password'): 
+        return False
+
+    return True
+
+
 def get_data_settings():
-    storage = click.prompt("Enter data storage type", type=click.Choice(['JSON', 'SQL', 'Influx']))
-    if storage == 'JSON':
+    storage = click.prompt("Enter data storage type", type=click.Choice(['JSON', 'SQL', 'Influx'], case_sensitive=False))
+    if storage.upper() == 'JSON':
         db = click.prompt("Enter path to JSON data file")
         dbuser = None
         dbpswd = None
@@ -42,14 +53,33 @@ def get_data_settings():
     return settings
 
 
+def validate_data_settings(settings):
+    if not settings.has_option('data', 'storage'): 
+        return False
+    if not settings.has_option('data', 'db'): 
+        return False
+
+    return True
+
+
 def get_speedtest_settings():
-    foo = click.prompt("Enter value for 'foo'")
+    uri = click.prompt("Enter URI for 'speedtest-cli'")
     settings = {
         'speedtest': {
-            'foo': foo,
+            'URI': foo,
             }
         }
+    
+    # /usr/local/bin/speedtest-cli
+    
     return settings
+
+
+def validate_speedtest_settings(settings):
+    if not settings.has_option('speedtest', 'foo'): 
+        return False
+
+    return True
 
 
 def read_settings(configFName):
@@ -81,12 +111,12 @@ def save_settings(configFName, section):
 
 
 def isvalid_settings(settings):
-    if not settings.has_section('wifi'):
+    if not validate_wifi_settings(settings):
         return False
-    if not settings.has_section('data'):
-        return False
-    if not settings.has_section('speedtest'):
-        return False
+    #if not validate_data_settings(settings):
+    #    return False
+    #if not validate_speedtest_settings(settings):
+    #    return False
     #
     # Need to put in some actual tests here
     #
