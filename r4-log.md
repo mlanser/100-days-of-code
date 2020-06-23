@@ -35,4 +35,8 @@ Started on [Sunday June 14, 2020].
 * Added speed test code and a bit more error handling to Wifi2 app.
 
 ### R4D9 - 22JUN2020
-* Added ability to store speed test data to JSON file.
+* Added feature to store speed test data to CSV file.
+
+### R4D10 - 23JUN2020
+* Finished feature to store speed test data to CSV file.
+* Started working on other formats as well.

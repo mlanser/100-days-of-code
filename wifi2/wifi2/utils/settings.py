@@ -38,18 +38,25 @@ def validate_wifi_settings(settings):
 
 
 def get_data_settings(ctxGlobals):
+    dbuser = None
+    dbpswd = None
+
     storage = click.prompt(
         "Enter data storage type", 
-        type=click.Choice(['JSON', 'SQL', 'Influx'], case_sensitive=False)
+        type=click.Choice(['CSV', 'JSON', 'SQL', 'Influx'], case_sensitive=False)
     )
-    if storage.upper() == 'JSON':
+    if storage.upper() == 'CSV':
+        db = click.prompt(
+            "Enter path to CSV data file",
+            type=click.Path(),
+            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'data.csv'),
+        )
+    elif storage.upper() == 'JSON':
         db = click.prompt(
             "Enter path to JSON data file",
             type=click.Path(),
             default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'data.json'),
         )
-        dbuser = None
-        dbpswd = None
     else:
         db = click.prompt("Enter database URI")
         dbuser = click.prompt("Enter database user name", default='')
@@ -60,7 +67,7 @@ def get_data_settings(ctxGlobals):
             'storage': storage,
             'db': db,
             'dbuser': dbuser,
-            'dbpsswd': dbpswd,
+            'dbpswd': dbpswd,
             }
         }
     

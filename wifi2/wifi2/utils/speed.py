@@ -18,7 +18,7 @@ def get_speed_data(settings):
 
     proc.wait() 
     if proc.returncode != 0:
-        raise click.ClickException("Missing and/or failed to run 'speedtest-cli' utility! [Code: {}]".format(str(proc.returncode)))
+        raise click.ClickException("Failed to run and/or missing 'speedtest-cli' utility! [Code: {}]".format(str(proc.returncode)))
         
     response = proc.stdout.read()
         
@@ -33,16 +33,50 @@ def get_speed_data(settings):
     }
 
 
-def save_speed_data(settings, data):
+def save_data_to_csv(data, dbFName):
+    if not os.path.exists(dbFName):
+        path = os.path.dirname(os.path.abspath(dbFName))
+        if not os.path.exists(path):
+            os.makedirs(path)
+    
     try:
-        f = open('/home/pi/Code/Python/speedtest.csv', 'a+')
-        if os.stat('/home/pi/Code/Python/speedtest.csv').st_size == 0:
-            f.write('Date,Time,Ping (ms),Download (Mbit/s),Upload (Mbit/s)\r\n')
+        dbFile = open(dbFName, 'a+')
+        if os.stat(dbFName).st_size == 0:
+            dbFile.write('Date,Time,Ping (ms),Download (Mbit/s),Upload (Mbit/s)\r\n')
 
-        f.write('{},{},{},{},{}\r\n'.format(time.strftime('%m/%d/%y'), time.strftime('%H:%M'), ping, download, upload))
+        dbFile.write('{},{},{},{},{}\r\n'.format(time.strftime('%m/%d/%y'), time.strftime('%H:%M'), data['ping'], data['download'], data['upload']))
 
     except:
         pass
 
     finally:
-        f.close()
+        dbFile.close()
+    
+    
+def save_data_to_json(data, dbFName):
+    print('-- SAVING TO JSON -- {}'.format(dbFName))
+    
+    
+def save_data_to_sql(data, db, dbuser, dbpswd):
+    print('-- SAVING TO SQL -- {}:{}:{}'.format(db, dbuser, dbpswd))
+    
+    
+def save_data_to_influx(data, db, dbuser, dbpswd):
+    print('-- SAVING TO INFLUX -- {}:{}:{}'.format(db, dbuser, dbpswd))
+    
+    
+def save_speed_data(settings, data):
+    if settings['data']['storage'].upper() == 'CSV':
+        save_data_to_csv(data, settings['data']['db'])
+        
+    elif settings['data']['storage'].upper() == 'JSON':
+        save_data_to_json(data, settings['data']['db'])
+        
+    elif settings['data']['storage'].upper() == 'SQL':
+        save_data_to_sql(data, settings['data']['db'], settings['data']['dbuser'], settings['data']['dbpswd'])
+        
+    elif settings['data']['storage'] == 'Influx':
+        save_data_to_influx(data, settings['data']['db'], settings['data']['dbuser'], settings['data']['dbpswd'])
+        
+    else:    
+        raise click.ClickException("Data storage type '{}' is not supported!".format(str(settings['data']['storage'])))

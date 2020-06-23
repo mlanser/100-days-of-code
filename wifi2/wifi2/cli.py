@@ -119,7 +119,7 @@ def configure(ctx, section: str = ''):
     default='',
     help='Full path to png file')
 @click.pass_context
-def wifi_creds(ctx, how, filename=''):
+def creds(ctx, how, filename=''):
     """
     Show QR code for WiFi credentials.
     """
@@ -181,19 +181,11 @@ def speedtest(ctx, display, save):
         click.echo('-- PRINT TO EPAPER CODE HERE --')
         #
         #
-    else:
-        # Do nothing
-        pass
     
     if save:
-        #
-        #
-        click.echo('-- SAVE TO DATA STORE --')
-        #
-        #
+        save_speed_data(ctx.obj['settings'], data)
+         
     
-    
-
 # ---------------------------------------------------------
 # CMD: debug
 # ---------------------------------------------------------
