@@ -3,10 +3,17 @@ import os
 import click
 
 
-def get_wifi_settings():
+# =========================================================
+#              H E L P E R   F U N C T I O N S
+# =========================================================
+def get_wifi_settings(ctxGlobals):
     ssid = click.prompt("Enter network SSID")
-    security = click.prompt("Enter WiFi security", type=click.Choice(['WAP', 'WEP'], case_sensitive=False))
     password = click.prompt("Enter WiFi password")
+    security = click.prompt(
+        "Enter WiFi security",
+        type=click.Choice(['WPA', 'WPA2', 'WEP'], case_sensitive=False),
+        default='WPA',
+    )
     
     settings = {
         'wifi': {
@@ -30,10 +37,17 @@ def validate_wifi_settings(settings):
     return True
 
 
-def get_data_settings():
-    storage = click.prompt("Enter data storage type", type=click.Choice(['JSON', 'SQL', 'Influx'], case_sensitive=False))
+def get_data_settings(ctxGlobals):
+    storage = click.prompt(
+        "Enter data storage type", 
+        type=click.Choice(['JSON', 'SQL', 'Influx'], case_sensitive=False)
+    )
     if storage.upper() == 'JSON':
-        db = click.prompt("Enter path to JSON data file")
+        db = click.prompt(
+            "Enter path to JSON data file",
+            type=click.Path(),
+            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'data.json'),
+        )
         dbuser = None
         dbpswd = None
     else:
@@ -62,11 +76,15 @@ def validate_data_settings(settings):
     return True
 
 
-def get_speedtest_settings():
-    uri = click.prompt("Enter URI for 'speedtest-cli'")
+def get_speedtest_settings(ctxGlobals):
+    uri = click.prompt(
+        "Enter URI for 'speedtest-cli'",
+        type=click.Path(),
+        default=click.get_app_dir('speedtest-cli')
+    )
     settings = {
         'speedtest': {
-            'URI': foo,
+            'URI': uri,
             }
         }
     
@@ -82,31 +100,37 @@ def validate_speedtest_settings(settings):
     return True
 
 
-def read_settings(configFName):
-    if os.path.exists(configFName):
+def read_settings(ctxGlobals):
+    if os.path.exists(ctxGlobals['configFName']):
         config = configparser.ConfigParser(allow_no_value=True)
-        config.read(configFName)
+        config.read(ctxGlobals['configFName'])
     else:
-        raise click.ClickException("Config file '{}' does NOT exist or cannot be accessed!".format(configFName))
+        raise click.ClickException("Config file '{}' does NOT exist or cannot be accessed!".format(ctxGlobals['configFName']))
 
     return config
         
         
-def save_settings(configFName, section):
+def save_settings(ctxGlobals, section):
     config = configparser.ConfigParser(allow_no_value=True)
-    if os.path.exists(configFName):
-        config.read(configFName)
+    if os.path.exists(ctxGlobals['configFName']):
+        config.read(ctxGlobals['configFName'])
+    else:
+        path = os.path.dirname(os.path.abspath(ctxGlobals['configFName']))
+        if not os.path.exists(path):
+            os.makedirs(path)
+        else:
+            raise click.ClickException("Config file '{}' does NOT exist or cannot be accessed!".format(ctxGlobals['configFName']))
     
     if section == 'wifi':
-        config.read_dict(get_wifi_settings())
+        config.read_dict(get_wifi_settings(ctxGlobals))
     elif section == 'data':
-        config.read_dict(get_data_settings())
+        config.read_dict(get_data_settings(ctxGlobals))
     elif section == 'speedtest':
-        config.read_dict(get_speedtest_settings())
+        config.read_dict(get_speedtest_settings(ctxGlobals))
     else:
         raise click.BadParameter("Invalid section '{}'".format(section))
     
-    with open(configFName, 'w') as configFile:
+    with open(ctxGlobals['configFName'], 'w') as configFile:
         config.write(configFile)
 
 

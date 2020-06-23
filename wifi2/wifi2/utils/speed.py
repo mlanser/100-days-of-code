@@ -3,11 +3,25 @@ import os
 import re
 import subprocess
 import time
+import click
 
 
 def get_speed_data(settings):
-    response = subprocess.Popen('speedtest-cli --simple', shell=True, stdout=subprocess.PIPE).stdout.read()
+    try:
+        proc = subprocess.Popen('speedtest-cli --simple',
+                                shell=True,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+        
+    except OSError as e:
+        raise click.ClickException("Failed to run 'speedtest-cli' utility! [Orig: {}]".format(e))
 
+    proc.wait() 
+    if proc.returncode != 0:
+        raise click.ClickException("Missing and/or failed to run 'speedtest-cli' utility! [Code: {}]".format(str(proc.returncode)))
+        
+    response = proc.stdout.read()
+        
     ping = re.findall('Ping:\s(.*?)\s', str(response), re.MULTILINE)
     download = re.findall('Download:\s(.*?)\s', str(response), re.MULTILINE)
     upload = re.findall('Upload:\s(.*?)\s', str(response), re.MULTILINE)

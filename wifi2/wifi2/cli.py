@@ -10,7 +10,8 @@ from .utils.settings import read_settings, save_settings, isvalid_settings
 from .utils.qr import wifi_qr
 from .utils.speed import get_speed_data, save_speed_data
 
-
+APP_NAME = 'wifi2'
+APP_CONFIG = 'config.ini'
 
 # =========================================================
 #                H E L P E R   C L A S S E S
@@ -60,7 +61,7 @@ def current_weather(location, api_key='OWM_API_KEY'):
 @click.option(
     '--config',
     type=click.Path(),
-    default='~/.wifi2.ini',
+    default=os.path.join(click.get_app_dir(APP_NAME), APP_CONFIG),
     help='Name of config file to use.',
 )
 @click.pass_context
@@ -70,16 +71,24 @@ def main(ctx, config: str = ''):
     
     To continuoulsy check and log internet speed, simply use cron (or similar) to run the 'wifi2 speedtest' command on a regular basis.
     """
-    ctx.obj['configFName'] = os.path.expanduser(config)
+    ctx.obj = {
+        'globals': {
+            'appName': APP_NAME,
+            'configFName': os.path.expanduser(config),
+        }
+    }
+    
         
         
 # ---------------------------------------------------------
 #                   S u b - C o m m a n d s
 # ---------------------------------------------------------
+# CMD: configure
+# ---------------------------------------------------------
 @main.command()
 @click.option(
     '--section',
-    type=click.Choice(['wifi', 'data', 'speedtest']),
+    type=click.Choice(['wifi', 'data', 'speedtest'], case_sensitive=False),
     default='',
     help='Config file section name.',
 )
@@ -89,11 +98,14 @@ def configure(ctx, section: str = ''):
     Define and store configuration values for a given section in the config file. If 
     """
     if section.lower() in ['wifi', 'data', 'speedtest']:
-        save_settings(ctx.obj['configFName'], section.lower())
+        save_settings(ctx.obj['globals'], section.lower())
     else:
         raise click.BadParameter("Invalid section '{}'".format(section))
     
     
+# ---------------------------------------------------------
+# CMD: wifi-creds
+# ---------------------------------------------------------
 @main.command()
 @click.option(
     '--how',
@@ -107,11 +119,11 @@ def configure(ctx, section: str = ''):
     default='',
     help='Full path to png file')
 @click.pass_context
-def show_qr(ctx, how, filename=''):
+def wifi_creds(ctx, how, filename=''):
     """
     Show QR code for WiFi credentials.
     """
-    ctx.obj['settings'] = read_settings(ctx.obj['configFName'])
+    ctx.obj['settings'] = read_settings(ctx.obj['globals'])
     if not isvalid_settings(ctx.obj['settings']):
         raise click.ClickException("Invalid and/or incomplete config info!")
 
@@ -131,40 +143,69 @@ def show_qr(ctx, how, filename=''):
         click.echo("Saved QR code to '{}'".format(filename))
     
     
+# ---------------------------------------------------------
+# CMD: speedtest
+# ---------------------------------------------------------
 @main.command()
 @click.option(
     '--display',
-    type=click.Choice(['stdout', 'epaper'], case_sensitive=False),
+    type=click.Choice(['stdout', 'epaper', 'none'], case_sensitive=False),
     default='stdout',
     help='Display speed test data on STDOUT or ePaper screen.',
 )
+@click.option(
+    '--save/--no-save',
+    default=True,
+    help='Save speed test data to data storage.',
+)
 @click.pass_context
-def speedtest(ctx, display):
+def speedtest(ctx, display, save):
     """
     Get speed test data.
     """
-    ctx.obj['settings'] = read_settings(ctx.obj['configFName'])
+    ctx.obj['settings'] = read_settings(ctx.obj['globals'])
     if not isvalid_settings(ctx.obj['settings']):
         raise click.ClickException("Invalid and/or incomplete config info!")
     
     data = get_speed_data(ctx.obj['settings'])
-    
-    click.echo('DATE: {} {}'.format(time.strftime('%m/%d/%y'), time.strftime('%H:%M')))
-    click.echo('PING: {} ms'.format(data['ping']))
-    click.echo('DOWN: {} Mbit/s'.format(data['download']))
-    click.echo('UP:   {} Mbit/s'.format(data['upload']))
 
+    if display.lower() == 'stdout':
+        click.echo('DATE: {} {}'.format(time.strftime('%m/%d/%y'), time.strftime('%H:%M')))
+        click.echo('PING: {} ms'.format(data['ping']))
+        click.echo('DOWN: {} Mbit/s'.format(data['download']))
+        click.echo('UP:   {} Mbit/s'.format(data['upload']))
+
+    elif display.lower() == 'epaper':
+        #
+        #
+        click.echo('-- PRINT TO EPAPER CODE HERE --')
+        #
+        #
+    else:
+        # Do nothing
+        pass
+    
+    if save:
+        #
+        #
+        click.echo('-- SAVE TO DATA STORE --')
+        #
+        #
+    
     
 
+# ---------------------------------------------------------
+# CMD: debug
+# ---------------------------------------------------------
 @main.command()
 @click.argument('msg')
 @click.pass_context
-def show_msg(ctx, msg: str = 'Testing 1-2-3'):
+def debug(ctx, msg: str = 'Testing 1-2-3'):
     """
-    Show message.
+    Show debug message.
     """
     click.echo(msg)
-
+    click.echo("CONFIG: '{}'".format(ctx.obj['globals']['configFName']))
     
     
     
