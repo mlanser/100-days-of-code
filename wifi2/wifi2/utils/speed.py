@@ -4,6 +4,7 @@ import re
 import subprocess
 import time
 import click
+import json
 
 
 def get_speed_data(settings):
@@ -21,12 +22,14 @@ def get_speed_data(settings):
         raise click.ClickException("Failed to run and/or missing 'speedtest-cli' utility! [Code: {}]".format(str(proc.returncode)))
         
     response = proc.stdout.read()
-        
+    
+    timeStamp = time.time()
     ping = re.findall('Ping:\s(.*?)\s', str(response), re.MULTILINE)
     download = re.findall('Download:\s(.*?)\s', str(response), re.MULTILINE)
     upload = re.findall('Upload:\s(.*?)\s', str(response), re.MULTILINE)
 
     return {
+        'time': timeStamp,
         'ping': ping[0].replace(',', '.'),
         'download': download[0].replace(',', '.'),
         'upload': upload[0].replace(',', '.'),
@@ -43,19 +46,59 @@ def save_data_to_csv(data, dbFName):
         dbFile = open(dbFName, 'a+')
         if os.stat(dbFName).st_size == 0:
             dbFile.write('Date,Time,Ping (ms),Download (Mbit/s),Upload (Mbit/s)\r\n')
-
-        dbFile.write('{},{},{},{},{}\r\n'.format(time.strftime('%m/%d/%y'), time.strftime('%H:%M'), data['ping'], data['download'], data['upload']))
+        
+        for row in data:
+            dbFile.write('{},{},{},{},{}\r\n'.format(
+                time.strftime('%m/%d/%y', time.localtime(row['time'])),
+                time.strftime('%H:%M', time.localtime(row['time'])),
+                row['ping'],
+                row['download'],
+                row['upload']))
 
     except:
-        pass
+        raise click.ClickException("Failed to save data to '{}'!".format(dbFName))
+        
+    finally:
+        dbFile.close()
+    
 
+    
+def _read_json_file(dbFName):
+    try:
+        dbFile = open(dbFName, "r")
+        data = json.load(dbFile)
+        
+    except json.JSONDecodeError:
+        return None             # We'll just 'overwrite' the file if it's empty 
+                                # or if we can't read it.
+    finally:
+        dbFile.close()
+        
+    return data    
+
+        
+def _write_json_file(dbFName, data):
+    try:
+        dbFile = open(dbFName, "w")
+        json.dump(data, dbFile)
+        
+    except:
+        raise click.ClickException("Failed to write data to '{}'!".format(dbFName))
+        
     finally:
         dbFile.close()
     
     
 def save_data_to_json(data, dbFName):
-    print('-- SAVING TO JSON -- {}'.format(dbFName))
+    if not os.path.exists(dbFName):
+        path = os.path.dirname(os.path.abspath(dbFName))
+        if not os.path.exists(path):
+            os.makedirs(path)
     
+    jsonData = _read_json_file(dbFName) if os.path.exists(dbFName) else None
+    
+    _write_json_file(dbFName, data if jsonData == None else jsonData + data)
+
     
 def save_data_to_sql(data, db, dbuser, dbpswd):
     print('-- SAVING TO SQL -- {}:{}:{}'.format(db, dbuser, dbpswd))

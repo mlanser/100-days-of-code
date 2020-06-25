@@ -12,6 +12,9 @@ from .utils.speed import get_speed_data, save_speed_data
 
 APP_NAME = 'wifi2'
 APP_CONFIG = 'config.ini'
+APP_MAX_RUNS = 100
+APP_SLEEP = 60
+
 
 # =========================================================
 #                H E L P E R   C L A S S E S
@@ -104,20 +107,20 @@ def configure(ctx, section: str = ''):
     
     
 # ---------------------------------------------------------
-# CMD: wifi-creds
+# CMD: creds
 # ---------------------------------------------------------
 @main.command()
 @click.option(
     '--how',
     type=click.Choice(['terminal', 'png'], case_sensitive=False),
     default='terminal',
-    help='Display QR code in terminal or save to file.',
+    help='Display QR code with WiFi creds in terminal or save to file.',
 )
 @click.option(
     '--filename', 
     type=click.Path(),
     default='',
-    help='Full path to png file')
+    help='Full path to PNG file')
 @click.pass_context
 def creds(ctx, how, filename=''):
     """
@@ -137,6 +140,8 @@ def creds(ctx, how, filename=''):
         click.echo(qr.terminal())
     else:
         if filename.strip() == '':
+            # @todo Check if path to file exists.
+            #       If not, create req'd dirs
             filename = '{}/{}-QR.png'.format(Path.home(),str(ctx.obj['settings']['wifi']['ssid']).upper().replace(' ','-'))
         
         qr.png(filename, scale=10)
@@ -158,8 +163,14 @@ def creds(ctx, how, filename=''):
     default=True,
     help='Save speed test data to data storage.',
 )
+@click.option(
+    '--count',
+    type=click.IntRange(1, APP_MAX_RUNS, clamp=True),
+    default=1,
+    help='Number (1-100) of tests to run in sequence.',
+)
 @click.pass_context
-def speedtest(ctx, display, save):
+def speedtest(ctx, display, save, count):
     """
     Get speed test data.
     """
@@ -167,21 +178,28 @@ def speedtest(ctx, display, save):
     if not isvalid_settings(ctx.obj['settings']):
         raise click.ClickException("Invalid and/or incomplete config info!")
     
-    data = get_speed_data(ctx.obj['settings'])
-
-    if display.lower() == 'stdout':
-        click.echo('DATE: {} {}'.format(time.strftime('%m/%d/%y'), time.strftime('%H:%M')))
-        click.echo('PING: {} ms'.format(data['ping']))
-        click.echo('DOWN: {} Mbit/s'.format(data['download']))
-        click.echo('UP:   {} Mbit/s'.format(data['upload']))
-
-    elif display.lower() == 'epaper':
-        #
-        #
-        click.echo('-- PRINT TO EPAPER CODE HERE --')
-        #
-        #
+    data = []
     
+    for i in range(0, count):
+        data.append(get_speed_data(ctx.obj['settings']))
+
+        if display.lower() == 'stdout':
+            click.echo('-- Test {} of {} --'.format(str(i + 1), str(count)))
+            click.echo('DATE: {} {}'.format(time.strftime('%m/%d/%y', time.localtime(data[i]['time'])), time.strftime('%H:%M', time.localtime(data[i]['time']))))
+            click.echo('PING: {} ms'.format(data[i]['ping']))
+            click.echo('DOWN: {} Mbit/s'.format(data[i]['download']))
+            click.echo('UP:   {} Mbit/s'.format(data[i]['upload']))
+
+        elif display.lower() == 'epaper':
+            #
+            #
+            click.echo('-- PRINT TO EPAPER CODE HERE --')
+            #
+            #
+    
+        if (i + 1) < count:
+            time.sleep(APP_SLEEP)
+        
     if save:
         save_speed_data(ctx.obj['settings'], data)
          
