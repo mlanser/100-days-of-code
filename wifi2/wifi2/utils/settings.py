@@ -2,6 +2,12 @@ import configparser
 import os
 import click
 
+_CSV_    = 'csv'
+_JSON_   = 'json'
+_SQLite_ = 'sqlite'
+_Influx_ = 'influx'
+
+
 
 # =========================================================
 #              H E L P E R   F U N C T I O N S
@@ -27,6 +33,7 @@ def get_wifi_settings(ctxGlobals):
 
 
 def validate_wifi_settings(settings):
+    # @TODO: Need to add actual data validation logic here
     if not settings.has_option('wifi', 'ssid'): 
         return False
     if not settings.has_option('wifi', 'security'): 
@@ -43,19 +50,25 @@ def get_data_settings(ctxGlobals):
 
     storage = click.prompt(
         "Enter data storage type", 
-        type=click.Choice(['CSV', 'JSON', 'SQL', 'Influx'], case_sensitive=False)
+        type=click.Choice(['CSV', 'JSON', 'SQLite', 'Influx'], case_sensitive=False)
     )
-    if storage.upper() == 'CSV':
+    if storage.lower() == _CSV_:
         db = click.prompt(
             "Enter path to CSV data file",
             type=click.Path(),
             default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'data.csv'),
         )
-    elif storage.upper() == 'JSON':
+    elif storage.lower() == _JSON_:
         db = click.prompt(
             "Enter path to JSON data file",
             type=click.Path(),
             default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'data.json'),
+        )
+    elif storage.upper() == _SQLite_:
+        db = click.prompt(
+            "Enter path to SQLite database. Note: ':memory:' is not supported.",
+            type=click.Path(),
+            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'data.sqlite'),
         )
     else:
         db = click.prompt("Enter database URI")
@@ -75,6 +88,7 @@ def get_data_settings(ctxGlobals):
 
 
 def validate_data_settings(settings):
+    # @TODO: Need to add actual data validation logic here
     if not settings.has_option('data', 'storage'): 
         return False
     if not settings.has_option('data', 'db'): 
@@ -101,6 +115,7 @@ def get_speedtest_settings(ctxGlobals):
 
 
 def validate_speedtest_settings(settings):
+    # @TODO: Need to add actual data validation logic here
     if not settings.has_option('speedtest', 'foo'): 
         return False
 
@@ -144,8 +159,8 @@ def save_settings(ctxGlobals, section):
 def isvalid_settings(settings):
     if not validate_wifi_settings(settings):
         return False
-    #if not validate_data_settings(settings):
-    #    return False
+    if not validate_data_settings(settings):
+        return False
     #if not validate_speedtest_settings(settings):
     #    return False
     #
