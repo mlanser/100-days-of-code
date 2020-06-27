@@ -43,3 +43,6 @@ Started on [Sunday June 14, 2020].
 
 git status### R4D11 - 24JUN2020
 * Finished feature to store speed test data to JSON file.
+
+### R4D12 - 25JUN2020
+* Started feature to store speed test data to SQLite.
