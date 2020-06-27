@@ -2,8 +2,8 @@ import requests
 import os
 import re
 import click
-import png
 import time
+import png
 
 from pathlib import Path
 from .utils.settings import read_settings, save_settings, isvalid_settings
@@ -70,9 +70,9 @@ def current_weather(location, api_key='OWM_API_KEY'):
 @click.pass_context
 def main(ctx, config: str = ''):
     """
-    This tool can check and log the current internet speed of the WiFi network. It can also display WiFi access credemntials in text and as a QR code.
+    This tool can check and log the current internet speed of the WiFi network. It can also display WiFi access credentials in text and as a QR code.
     
-    To continuoulsy check and log internet speed, simply use cron (or similar) to run the 'wifi2 speedtest' command on a regular basis.
+    To continuously check and log internet speed, simply use cron (or similar) to run the 'wifi2 speedtest' command on a regular basis.
     """
     ctx.obj = {
         'globals': {
@@ -98,7 +98,7 @@ def main(ctx, config: str = ''):
 @click.pass_context
 def configure(ctx, section: str = ''):
     """
-    Define and store configuration values for a given section in the config file. If 
+    Define and store configuration values for a given section in the config file.
     """
     if section.lower() in ['wifi', 'data', 'speedtest']:
         save_settings(ctx.obj['globals'], section.lower())

@@ -12,6 +12,8 @@ _Influx_ = 'influx'
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
+#                  Manage WiFi Settings
+# ---------------------------------------------------------
 def get_wifi_settings(ctxGlobals):
     ssid = click.prompt("Enter network SSID")
     password = click.prompt("Enter WiFi password")
@@ -44,6 +46,9 @@ def validate_wifi_settings(settings):
     return True
 
 
+# ---------------------------------------------------------
+#                  Manage Data Settings
+# ---------------------------------------------------------
 def get_data_settings(ctxGlobals):
     dbuser = None
     dbpswd = None
@@ -64,9 +69,9 @@ def get_data_settings(ctxGlobals):
             type=click.Path(),
             default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'data.json'),
         )
-    elif storage.upper() == _SQLite_:
+    elif storage.lower() == _SQLite_:
         db = click.prompt(
-            "Enter path to SQLite database. Note: ':memory:' is not supported.",
+            "Enter path to SQLite database.\nNote: ':memory:' is not supported.",
             type=click.Path(),
             default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'data.sqlite'),
         )
@@ -97,6 +102,9 @@ def validate_data_settings(settings):
     return True
 
 
+# ---------------------------------------------------------
+#                  Manage SpeedTest Settings
+# ---------------------------------------------------------
 def get_speedtest_settings(ctxGlobals):
     uri = click.prompt(
         "Enter URI for 'speedtest-cli'",
@@ -119,6 +127,22 @@ def validate_speedtest_settings(settings):
     if not settings.has_option('speedtest', 'foo'): 
         return False
 
+    return True
+
+
+# ---------------------------------------------------------
+#                  Manage Data Settings
+# ---------------------------------------------------------
+def isvalid_settings(settings):
+    if not validate_wifi_settings(settings):
+        return False
+    if not validate_data_settings(settings):
+        return False
+    # if not validate_speedtest_settings(settings):
+    #    return False
+    #
+    # Need to put in some actual tests here
+    #
     return True
 
 
@@ -156,14 +180,7 @@ def save_settings(ctxGlobals, section):
         config.write(configFile)
 
 
-def isvalid_settings(settings):
-    if not validate_wifi_settings(settings):
-        return False
-    if not validate_data_settings(settings):
-        return False
-    #if not validate_speedtest_settings(settings):
-    #    return False
-    #
-    # Need to put in some actual tests here
-    #
-    return True
+def show_settings():
+    pass
+
+

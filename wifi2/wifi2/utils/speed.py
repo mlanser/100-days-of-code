@@ -13,7 +13,7 @@ import sqlite3
 # =========================================================
 #                  C S V   F U N C T I O N S
 # =========================================================
-def save_csv_data(data, dbFName):
+def save_csv_data(dbFName, data):
     if not os.path.exists(dbFName):
         path = os.path.dirname(os.path.abspath(dbFName))
         if not os.path.exists(path):
@@ -72,7 +72,7 @@ def _write_json(dbFName, data):
         dbFile.close()
     
     
-def save_json_data(data, dbFName):
+def save_json_data(dbFName, data):
     if not os.path.exists(dbFName):
         path = os.path.dirname(os.path.abspath(dbFName))
         if not os.path.exists(path):
@@ -108,22 +108,22 @@ def _connect_sqlite(dbFName):
     return dbConn
 
 
-def _create_sqlite_table(dbConn, dbCur)
+def _create_sqlite_table(dbCur):
     dbCur.execute('''CREATE TABLE IF NOT EXISTS records (time real, ping real, download real, upload real)''')
 
 
-def _save_sqlite_datarow(dbCur, dataRow)
+def _save_sqlite_datarow(dbCur, dataRow):
     dbCur.execute('''INSERT INTO records(time,ping,download,upload) VALUES(?,?,?,?)''',
-                  [row['time'], row['ping'], row['download'], row['upload']])
+                  [dataRow['time'], dataRow['ping'], dataRow['download'], dataRow['upload']])
     
     return dbCur.lastrowid
 
 
-def save_sqlite_data(data, dbFName):
+def save_sqlite_data(dbFName, data):
     dbConn = _connect_sqlite(dbFName)
     dbCur = dbConn.cursor()
     
-    _create_sqlite_table(dbConn, dbCur)
+    _create_sqlite_table(dbCur)
     
     for row in data:
         dbCur = _save_sqlite_datarow(dbCur, row)
@@ -132,15 +132,19 @@ def save_sqlite_data(data, dbFName):
     dbConn.close()
 
 
-    
+def show_sqlite_data(dbFName):
+    pass
+
     
 # =========================================================
 #             I N F L U X   F U N C T I O N S
 # =========================================================
-def save_data_to_influx(data, db, dbuser, dbpswd):
+def save_influx_data(db, dbuser, dbpswd, data):
     print('-- SAVING TO INFLUX -- {}:{}:{}'.format(db, dbuser, dbpswd))
     
     
+def show_influx_data(db, dbuser, dbpswd):
+    pass
 
     
 # =========================================================
@@ -177,16 +181,16 @@ def get_speed_data(settings):
 
 def save_speed_data(settings, data):
     if settings['data']['storage'].lower() == 'csv':
-        save_csv_data(data, settings['data']['db'])
+        save_csv_data(settings['data']['db'], data)
         
     elif settings['data']['storage'].lower() == 'json':
-        save_json_data(data, settings['data']['db'])
+        save_json_data(settings['data']['db'], data)
         
     elif settings['data']['storage'].lower() == 'sqlite':
-        save_sqlite_data(data, settings['data']['db'])
+        save_sqlite_data(settings['data']['db'], data)
         
     elif settings['data']['storage'] == 'Influx':
-        save_influx_data(data, settings['data']['db'], settings['data']['dbuser'], settings['data']['dbpswd'])
+        save_influx_data(settings['data']['db'], settings['data']['dbuser'], settings['data']['dbpswd'], data)
         
     else:    
         raise click.ClickException("Data storage type '{}' is not supported!".format(str(settings['data']['storage'])))
