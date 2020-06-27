@@ -180,7 +180,8 @@ def save_settings(ctxGlobals, section):
         config.write(configFile)
 
 
-def show_settings():
-    pass
+def show_settings(ctxGlobals, section):
+    click.echo("CONFIG: '{}'".format(ctxGlobals['configFName']))
+    click.echo("So many damn settings in the '{}' section!".format(section))
 
 

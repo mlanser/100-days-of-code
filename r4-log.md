@@ -46,3 +46,10 @@ git status### R4D11 - 24JUN2020
 
 ### R4D12 - 25JUN2020
 * Started feature to store speed test data to SQLite.
+
+### R4D13 - 26JUN2020
+* Working storing speed test data to SQLite.
+
+### R4D14 - 27JUN2020
+* Refactoring and cleanup.
+* More work on SQLite code.

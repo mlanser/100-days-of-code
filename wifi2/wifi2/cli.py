@@ -6,7 +6,7 @@ import time
 import png
 
 from pathlib import Path
-from .utils.settings import read_settings, save_settings, isvalid_settings
+from .utils.settings import read_settings, save_settings, show_settings, isvalid_settings
 from .utils.qr import wifi_qr
 from .utils.speed import get_speed_data, save_speed_data
 
@@ -91,17 +91,25 @@ def main(ctx, config: str = ''):
 @main.command()
 @click.option(
     '--section',
-    type=click.Choice(['wifi', 'data', 'speedtest'], case_sensitive=False),
+    type=click.Choice(['wifi', 'data', 'speedtest', 'all'], case_sensitive=False),
     default='',
     help='Config file section name.',
 )
+@click.option(
+    '--set/--show',
+    default=True,
+    help='Set (and (save) application settings for a given section, or just show/display current settings.',
+)
 @click.pass_context
-def configure(ctx, section: str = ''):
+def configure(ctx, section: str, set: bool):
     """
     Define and store configuration values for a given section in the config file.
     """
-    if section.lower() in ['wifi', 'data', 'speedtest']:
-        save_settings(ctx.obj['globals'], section.lower())
+    if section.lower() in ['wifi', 'data', 'speedtest', 'all']:
+        if set:
+            save_settings(ctx.obj['globals'], section.lower())
+        else:
+            show_settings(ctx.obj['globals'], section.lower())
     else:
         raise click.BadParameter("Invalid section '{}'".format(section))
     
@@ -122,7 +130,7 @@ def configure(ctx, section: str = ''):
     default='',
     help='Full path to PNG file')
 @click.pass_context
-def creds(ctx, how, filename=''):
+def creds(ctx, how: str, filename: str = ''):
     """
     Show QR code for WiFi credentials.
     """
@@ -170,7 +178,7 @@ def creds(ctx, how, filename=''):
     help='Number (1-100) of tests to run in sequence.',
 )
 @click.pass_context
-def speedtest(ctx, display, save, count):
+def speedtest(ctx, display: str, save: bool, count: int):
     """
     Get speed test data.
     """
