@@ -136,13 +136,17 @@ def validate_speedtest_settings(settings):
 def isvalid_settings(settings):
     if not validate_wifi_settings(settings):
         return False
+
     if not validate_data_settings(settings):
         return False
-    # if not validate_speedtest_settings(settings):
-    #    return False
+
+    if not validate_speedtest_settings(settings):
+        return False
+
     #
     # Need to put in some actual tests here
     #
+
     return True
 
 
@@ -157,6 +161,9 @@ def read_settings(ctxGlobals):
         
         
 def save_settings(ctxGlobals, section):
+    if not section.lower() in ['wifi', 'data', 'speedtest', 'all']:
+        raise click.BadParameter("Invalid section '{}'".format(section))
+
     config = configparser.ConfigParser(allow_no_value=True)
     if os.path.exists(ctxGlobals['configFName']):
         config.read(ctxGlobals['configFName'])
@@ -167,21 +174,41 @@ def save_settings(ctxGlobals, section):
         else:
             raise click.ClickException("Config file '{}' does NOT exist or cannot be accessed!".format(ctxGlobals['configFName']))
     
-    if section == 'wifi':
+    if section == 'all' or section == 'wifi':
         config.read_dict(get_wifi_settings(ctxGlobals))
-    elif section == 'data':
+
+    if section == 'all' or section == 'data':
         config.read_dict(get_data_settings(ctxGlobals))
-    elif section == 'speedtest':
+
+    if section == 'all' or section == 'speedtest':
         config.read_dict(get_speedtest_settings(ctxGlobals))
-    else:
-        raise click.BadParameter("Invalid section '{}'".format(section))
-    
+
     with open(ctxGlobals['configFName'], 'w') as configFile:
         config.write(configFile)
 
 
 def show_settings(ctxGlobals, section):
-    click.echo("CONFIG: '{}'".format(ctxGlobals['configFName']))
-    click.echo("So many damn settings in the '{}' section!".format(section))
+    if not section.lower() in ['wifi', 'data', 'speedtest', 'all']:
+        raise click.BadParameter("Invalid section '{}'".format(section))
 
+    settings = read_settings(ctxGlobals)
 
+    if section == 'all' or section == 'wifi':
+        click.echo("\n--- [wifi] --------------------")
+        click.echo("SSID:              {}".format(str(settings['wifi']['ssid'])))
+        click.echo("Security:          {}".format(str(settings['wifi']['security'])))
+        click.echo("Password:          {}".format(str(settings['wifi']['password'])))
+
+    if section == 'all' or section == 'data':
+        click.echo("\n--- [data] --------------------")
+        click.echo("Storage:           {}".format(str(settings['data']['storage'])))
+        click.echo("Database (db):     {}".format(str(settings['data']['db'])))
+        click.echo("DB User  (dbuser:  {}".format(str(settings['data']['dbuser'])))
+        click.echo("DB Pswd  (dbpswd): {}".format(str(settings['data']['dbpswd'])))
+
+    if section == 'all' or section == 'speedtest':
+        click.echo("\n--- [speedtest] ---------------")
+        click.echo("URI:               {}".format(str(settings['speedtest']['uri'])))
+
+    click.echo("\n-------------------------------")
+    click.echo("CONFIG: '{}'\n".format(ctxGlobals['configFName']))

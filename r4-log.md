@@ -53,3 +53,7 @@ git status### R4D11 - 24JUN2020
 ### R4D14 - 27JUN2020
 * Refactoring and cleanup.
 * More work on SQLite code.
+
+### R4D15 - 28JUN2020
+* More refactoring and cleanup.
+* Added ability to update/set and show all settings.

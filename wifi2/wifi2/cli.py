@@ -63,9 +63,9 @@ def current_weather(location, api_key='OWM_API_KEY'):
 @click.group()
 @click.option(
     '--config',
-    type=click.Path(),
-    default=os.path.join(click.get_app_dir(APP_NAME), APP_CONFIG),
-    help='Name of config file to use.',
+    type = click.Path(),
+    default = os.path.join(click.get_app_dir(APP_NAME), APP_CONFIG),
+    help = 'Name of config file to use.',
 )
 @click.pass_context
 def main(ctx, config: str = ''):
@@ -91,44 +91,44 @@ def main(ctx, config: str = ''):
 @main.command()
 @click.option(
     '--section',
-    type=click.Choice(['wifi', 'data', 'speedtest', 'all'], case_sensitive=False),
-    default='',
-    help='Config file section name.',
+    type = click.Choice(['wifi', 'data', 'speedtest', 'all'], case_sensitive=False),
+    default = '',
+    help = 'Config file section name.',
 )
 @click.option(
     '--set/--show',
-    default=True,
-    help='Set (and (save) application settings for a given section, or just show/display current settings.',
+    default = True,
+    help = 'Set (and (save) application settings for a given section, or just show/display current settings.',
 )
 @click.pass_context
 def configure(ctx, section: str, set: bool):
     """
     Define and store configuration values for a given section in the config file.
     """
-    if section.lower() in ['wifi', 'data', 'speedtest', 'all']:
-        if set:
-            save_settings(ctx.obj['globals'], section.lower())
-        else:
-            show_settings(ctx.obj['globals'], section.lower())
-    else:
+    if not section.lower() in ['wifi', 'data', 'speedtest', 'all']:
         raise click.BadParameter("Invalid section '{}'".format(section))
-    
-    
+
+    if set:
+        save_settings(ctx.obj['globals'], section.lower())
+    else:
+        show_settings(ctx.obj['globals'], section.lower())
+
+
 # ---------------------------------------------------------
 # CMD: creds
 # ---------------------------------------------------------
 @main.command()
 @click.option(
     '--how',
-    type=click.Choice(['terminal', 'png'], case_sensitive=False),
-    default='terminal',
-    help='Display QR code with WiFi creds in terminal or save to file.',
+    type = click.Choice(['terminal', 'png'], case_sensitive=False),
+    default = 'terminal',
+    help = 'Display QR code with WiFi creds in terminal or save to file.',
 )
 @click.option(
     '--filename', 
-    type=click.Path(),
-    default='',
-    help='Full path to PNG file')
+    type = click.Path(),
+    default = '',
+    help = 'Full path to PNG file')
 @click.pass_context
 def creds(ctx, how: str, filename: str = ''):
     """
@@ -162,20 +162,20 @@ def creds(ctx, how: str, filename: str = ''):
 @main.command()
 @click.option(
     '--display',
-    type=click.Choice(['stdout', 'epaper', 'none'], case_sensitive=False),
-    default='stdout',
-    help='Display speed test data on STDOUT or ePaper screen.',
+    type = click.Choice(['stdout', 'epaper', 'none'], case_sensitive=False),
+    default = 'stdout',
+    help = 'Display speed test data on STDOUT or ePaper screen.',
 )
 @click.option(
     '--save/--no-save',
-    default=True,
-    help='Save speed test data to data storage.',
+    default = True,
+    help = 'Save speed test data to data storage.',
 )
 @click.option(
     '--count',
-    type=click.IntRange(1, APP_MAX_RUNS, clamp=True),
-    default=1,
-    help='Number (1-100) of tests to run in sequence.',
+    type = click.IntRange(1, APP_MAX_RUNS, clamp=True),
+    default = 1,
+    help = 'Number (1-100) of tests to run in sequence.',
 )
 @click.pass_context
 def speedtest(ctx, display: str, save: bool, count: int):
@@ -216,9 +216,13 @@ def speedtest(ctx, display: str, save: bool, count: int):
 # CMD: debug
 # ---------------------------------------------------------
 @main.command()
-@click.argument('msg')
+@click.option(
+    '--msg',
+    default = 'Testing 1-2-3',
+    help ='Display speed test data on STDOUT or ePaper screen.',
+)
 @click.pass_context
-def debug(ctx, msg: str = 'Testing 1-2-3'):
+def debug(ctx, msg: str):
     """
     Show debug message.
     """
@@ -226,12 +230,13 @@ def debug(ctx, msg: str = 'Testing 1-2-3'):
     click.echo("CONFIG: '{}'".format(ctx.obj['globals']['configFName']))
     
     
-    
+
+
 # =========================================================
 #              A P P   S T A R T   S E C T I O N
 # =========================================================
 def start():
-    main(obj={})
+    main(obj = {})
 
 if __name__ == '__main__':
     start()
