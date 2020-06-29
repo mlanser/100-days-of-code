@@ -124,7 +124,7 @@ def get_speedtest_settings(ctxGlobals):
 
 def validate_speedtest_settings(settings):
     # @TODO: Need to add actual data validation logic here
-    if not settings.has_option('speedtest', 'foo'): 
+    if not settings.has_option('speedtest', 'uri'):
         return False
 
     return True

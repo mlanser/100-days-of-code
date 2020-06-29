@@ -8,7 +8,7 @@ import png
 from pathlib import Path
 from .utils.settings import read_settings, save_settings, show_settings, isvalid_settings
 from .utils.qr import wifi_qr
-from .utils.speed import get_speed_data, save_speed_data
+from .utils.speed import run_speed_test, get_speed_data, save_speed_data
 
 APP_NAME = 'wifi2'
 APP_CONFIG = 'config.ini'
@@ -53,6 +53,16 @@ def current_weather(location, api_key='OWM_API_KEY'):
     return response.json()['weather'][0]['description']
 
 
+def show_speed_data(data, table=False):
+    if table:
+        click.echo("-- SHOW SPEED DATA in TABLE format --")
+
+    else:
+        click.echo('DATE: {} {}'.format(time.strftime('%m/%d/%y', time.localtime(data['time'])),
+                                        time.strftime('%H:%M', time.localtime(data['time']))))
+        click.echo('PING: {} ms'.format(data['ping']))
+        click.echo('DOWN: {} Mbit/s'.format(data['download']))
+        click.echo('UP:   {} Mbit/s'.format(data['upload']))
 
 
 # =========================================================
@@ -162,7 +172,7 @@ def creds(ctx, how: str, filename: str = ''):
 @main.command()
 @click.option(
     '--display',
-    type = click.Choice(['stdout', 'epaper', 'none'], case_sensitive=False),
+    type = click.Choice(['stdout', 'epaper', 'none'], case_sensitive = False),
     default = 'stdout',
     help = 'Display speed test data on STDOUT or ePaper screen.',
 )
@@ -173,43 +183,49 @@ def creds(ctx, how: str, filename: str = ''):
 )
 @click.option(
     '--count',
-    type = click.IntRange(1, APP_MAX_RUNS, clamp=True),
+    type = click.IntRange(1, APP_MAX_RUNS, clamp = True),
     default = 1,
     help = 'Number (1-100) of tests to run in sequence.',
 )
+@click.option(
+    '--history',
+    is_flag = True,
+    help = "Show history of 'all' or given number (using 'count') of previously saved speed tests.",
+)
 @click.pass_context
-def speedtest(ctx, display: str, save: bool, count: int):
+def speedtest(ctx, display: str, save: bool, history: bool, count: int):
     """
     Get speed test data.
     """
     ctx.obj['settings'] = read_settings(ctx.obj['globals'])
     if not isvalid_settings(ctx.obj['settings']):
         raise click.ClickException("Invalid and/or incomplete config info!")
-    
-    data = []
-    
-    for i in range(0, count):
-        data.append(get_speed_data(ctx.obj['settings']))
 
-        if display.lower() == 'stdout':
-            click.echo('-- Test {} of {} --'.format(str(i + 1), str(count)))
-            click.echo('DATE: {} {}'.format(time.strftime('%m/%d/%y', time.localtime(data[i]['time'])), time.strftime('%H:%M', time.localtime(data[i]['time']))))
-            click.echo('PING: {} ms'.format(data[i]['ping']))
-            click.echo('DOWN: {} Mbit/s'.format(data[i]['download']))
-            click.echo('UP:   {} Mbit/s'.format(data[i]['upload']))
+    if history:
+        show_speed_data(get_speed_data(ctx.obj['settings'], count), table = True)
 
-        elif display.lower() == 'epaper':
-            #
-            #
-            click.echo('-- PRINT TO EPAPER CODE HERE --')
-            #
-            #
-    
-        if (i + 1) < count:
-            time.sleep(APP_SLEEP)
-        
-    if save:
-        save_speed_data(ctx.obj['settings'], data)
+    else:
+        data = []
+
+        for i in range(0, count):
+            data.append(run_speed_test(ctx.obj['settings']))
+
+            if display.lower() == 'stdout':
+                click.echo('-- Test {} of {} --'.format(str(i + 1), str(count)))
+                show_speed_data(data[i])
+
+            elif display.lower() == 'epaper':
+                #
+                #
+                click.echo('-- PRINT TO EPAPER CODE HERE --')
+                #
+                #
+
+            if (i + 1) < count:
+                time.sleep(APP_SLEEP)
+
+        if save:
+            save_speed_data(ctx.obj['settings'], data)
          
     
 # ---------------------------------------------------------

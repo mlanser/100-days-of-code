@@ -41,7 +41,7 @@ Started on [Sunday June 14, 2020].
 * Finished feature to store speed test data to CSV file.
 * Started working on other formats as well.
 
-git status### R4D11 - 24JUN2020
+### R4D11 - 24JUN2020
 * Finished feature to store speed test data to JSON file.
 
 ### R4D12 - 25JUN2020

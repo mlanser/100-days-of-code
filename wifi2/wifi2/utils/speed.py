@@ -39,9 +39,19 @@ def save_csv_data(dbFName, data):
         dbFile.close()
     
 
-def show_csv_data(dbFName):
-    pass
-    
+def get_csv_data(dbFName, count = 1):
+    try:
+        dbFile = open(dbFName, 'r')
+        headers = dbFile.readline()
+        print(type(headers))
+        print(headers)
+
+    except:
+        raise click.ClickException("Failed to save data to '{}'!".format(dbFName))
+
+    finally:
+        dbFile.close()
+
     
 # =========================================================
 #                 J S O N   F U N C T I O N S
@@ -83,7 +93,7 @@ def save_json_data(dbFName, data):
     _write_json(dbFName, data if jsonData == None else jsonData + data)
 
     
-def show_json_data(dbFName):
+def get_json_data(dbFName, count = 1):
     pass
 
 
@@ -132,7 +142,7 @@ def save_sqlite_data(dbFName, data):
     dbConn.close()
 
 
-def show_sqlite_data(dbFName):
+def get_sqlite_data(dbFName, count = 1):
     pass
 
     
@@ -143,14 +153,14 @@ def save_influx_data(db, dbuser, dbpswd, data):
     print('-- SAVING TO INFLUX -- {}:{}:{}'.format(db, dbuser, dbpswd))
     
     
-def show_influx_data(db, dbuser, dbpswd):
+def get_influx_data(db, dbuser, dbpswd, count = 1):
     pass
 
     
 # =========================================================
 #          S P E E D T E S T   F U N C T I O N S
 # =========================================================
-def get_speed_data(settings):
+def run_speed_test(settings):
     try:
         proc = subprocess.Popen('speedtest-cli --simple',
                                 shell=True,
@@ -196,19 +206,18 @@ def save_speed_data(settings, data):
         raise click.ClickException("Data storage type '{}' is not supported!".format(str(settings['data']['storage'])))
 
         
-def show_speed_data(settings):
+def get_speed_data(settings, count):
     if settings['data']['storage'].lower() == 'csv':
-        show_csv_data(settings['data']['db'])
+        get_csv_data(settings['data']['db'], count)
         
     elif settings['data']['storage'].lower() == 'json':
-        show_json_data(settings['data']['db'])
+        get_json_data(settings['data']['db'], count)
         
     elif settings['data']['storage'].lower() == 'sqlite':
-        show_sqlite_data(settings['data']['db'])
+        get_sqlite_data(settings['data']['db'], count)
         
     elif settings['data']['storage'] == 'Influx':
-        show_influx_data(settings['data']['db'], settings['data']['dbuser'], settings['data']['dbpswd'])
+        get_influx_data(settings['data']['db'], settings['data']['dbuser'], settings['data']['dbpswd'], count)
         
     else:    
         raise click.ClickException("Data storage type '{}' is not supported!".format(str(settings['data']['storage'])))
-        
