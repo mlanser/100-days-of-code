@@ -57,3 +57,7 @@ Started on [Sunday June 14, 2020].
 ### R4D15 - 28JUN2020
 * More refactoring and cleanup.
 * Added ability to update/set and show all settings.
+
+### R4D16 - 29JUN2020
+* More refactoring and cleanup.
+* Adding more error handling and smarter utility functions.

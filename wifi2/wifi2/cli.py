@@ -8,7 +8,7 @@ import png
 from pathlib import Path
 from .utils.settings import read_settings, save_settings, show_settings, isvalid_settings
 from .utils.qr import wifi_qr
-from .utils.speed import run_speed_test, get_speed_data, save_speed_data
+from .utils.speedtest import run_speed_test, get_speed_data, save_speed_data
 
 APP_NAME = 'wifi2'
 APP_CONFIG = 'config.ini'
@@ -93,6 +93,7 @@ def main(ctx, config: str = ''):
     
         
         
+
 # ---------------------------------------------------------
 #                   S u b - C o m m a n d s
 # ---------------------------------------------------------
@@ -166,6 +167,8 @@ def creds(ctx, how: str, filename: str = ''):
         click.echo("Saved QR code to '{}'".format(filename))
     
     
+
+    
 # ---------------------------------------------------------
 # CMD: speedtest
 # ---------------------------------------------------------
@@ -197,18 +200,40 @@ def speedtest(ctx, display: str, save: bool, history: bool, count: int):
     """
     Get speed test data.
     """
+    
+    def csv_data_header():
+        return 'Date,Time,Ping (ms),Download (Mbit/s),Upload (Mbit/s)\r\n'
+    
+    def csv_data_formatter(dataRow):
+        return '{},{},{},{},{}\r\n'.format(
+                time.strftime('%m/%d/%y', time.localtime(dataRow['time'])),
+                time.strftime('%H:%M', time.localtime(dataRow['time'])),
+                dataRow['ping'],
+                dataRow['download'],
+                dataRow['upload'])
+    
     ctx.obj['settings'] = read_settings(ctx.obj['globals'])
     if not isvalid_settings(ctx.obj['settings']):
         raise click.ClickException("Invalid and/or incomplete config info!")
 
+    # Only show historic data    
     if history:
-        show_speed_data(get_speed_data(ctx.obj['settings'], count), table = True)
+        try:
+            show_speed_data(get_speed_data(ctx.obj['settings']['data'], count), table = True)
+            
+        except OSError as e:     
+            raise click.ClickException(e)
 
+    # Collect new data
     else:
         data = []
 
         for i in range(0, count):
-            data.append(run_speed_test(ctx.obj['settings']))
+            try:
+                data.append(run_speed_test(ctx.obj['settings']['speedtest']))
+            
+            except OSError as e:     
+                raise click.ClickException(e)
 
             if display.lower() == 'stdout':
                 click.echo('-- Test {} of {} --'.format(str(i + 1), str(count)))
@@ -225,9 +250,16 @@ def speedtest(ctx, display: str, save: bool, history: bool, count: int):
                 time.sleep(APP_SLEEP)
 
         if save:
-            save_speed_data(ctx.obj['settings'], data)
-         
-    
+            try:
+                if ctx.obj['settings']['data']['storage'].lower() == 'csv':
+                    save_speed_data(ctx.obj['settings']['data'], data, csv_data_formatter, csv_data_header)
+                else:    
+                    save_speed_data(ctx.obj['settings']['data'], data)
+                
+            except OSError as e:     
+                raise click.ClickException(e)
+
+                
 # ---------------------------------------------------------
 # CMD: debug
 # ---------------------------------------------------------

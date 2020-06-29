@@ -1,9 +1,8 @@
-import sys
+#import sys
 import os
-import re
-import subprocess
-import time
-import click
+#import re
+#import time
+#import click
 import json
 import sqlite3
 
@@ -13,7 +12,18 @@ import sqlite3
 # =========================================================
 #                  C S V   F U N C T I O N S
 # =========================================================
-def save_csv_data(dbFName, data):
+def save_csv_data(dbFName, data, csvFmt = None, csvHdr = None):
+    """Save data to CSV file.
+    
+    Args:
+        dbFName: CSV file name
+        data:    List with one or more data rows
+        csvFmt:  CSV row formatter callback function (which must return a string)
+        csvHdr:  CSV header row string. If blank (i.e. "None"), then no header line will be created.
+        
+    Raises:
+        OSError: If unable to access or save data to CSV file.
+    """
     if not os.path.exists(dbFName):
         path = os.path.dirname(os.path.abspath(dbFName))
         if not os.path.exists(path):
@@ -21,33 +31,44 @@ def save_csv_data(dbFName, data):
     
     try:
         dbFile = open(dbFName, 'a+')
-        if os.stat(dbFName).st_size == 0:
-            dbFile.write('Date,Time,Ping (ms),Download (Mbit/s),Upload (Mbit/s)\r\n')
+        if os.stat(dbFName).st_size == 0 and csvHdr != None:
+            dbFile.write(dataHdr)
         
         for row in data:
-            dbFile.write('{},{},{},{},{}\r\n'.format(
-                time.strftime('%m/%d/%y', time.localtime(row['time'])),
-                time.strftime('%H:%M', time.localtime(row['time'])),
-                row['ping'],
-                row['download'],
-                row['upload']))
+            dbFile.write(csvFmt(row))
 
     except:
-        raise click.ClickException("Failed to save data to '{}'!".format(dbFName))
+        raise OSError("Failed to save data to '{}'!".format(dbFName))
         
     finally:
         dbFile.close()
     
 
-def get_csv_data(dbFName, count = 1):
+def get_csv_data(dbFName, count = 1, csvHdr = False):
+    """Retrieve data from CSV file.
+    
+    Args:
+        dbFName: CSV file name
+        count:   Number of records to retrieve
+        csvHdr:  If FALSE, assume first row is header and start reading next row as 1st data row
+        
+    Raises:
+        OSError: If unable to access or save data to CSV file.
+    """
     try:
         dbFile = open(dbFName, 'r')
-        headers = dbFile.readline()
-        print(type(headers))
-        print(headers)
+        
+        hdrRow = dbFile.readline() if csvHdr else None 
+        print(type(hdrRow))
+        print(hdrRow)
+        
+        #data = []
+        #for i in range(0, count):
+        #    data.append(dbFile.readline())
+        print('--- RETRIEVED {} ROWS of CSV DATA ---'.format(str(count)))    
 
     except:
-        raise click.ClickException("Failed to save data to '{}'!".format(dbFName))
+        raise OSError("Failed to save data to '{}'!".format(dbFName))
 
     finally:
         dbFile.close()
@@ -155,69 +176,3 @@ def save_influx_data(db, dbuser, dbpswd, data):
     
 def get_influx_data(db, dbuser, dbpswd, count = 1):
     pass
-
-    
-# =========================================================
-#          S P E E D T E S T   F U N C T I O N S
-# =========================================================
-def run_speed_test(settings):
-    try:
-        proc = subprocess.Popen('speedtest-cli --simple',
-                                shell=True,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT)
-        
-    except OSError as e:
-        raise click.ClickException("Failed to run 'speedtest-cli' utility! [Orig: {}]".format(e))
-
-    proc.wait() 
-    if proc.returncode != 0:
-        raise click.ClickException("Failed to run and/or missing 'speedtest-cli' utility! [Code: {}]".format(str(proc.returncode)))
-        
-    response = proc.stdout.read()
-    
-    timeStamp = time.time()
-    ping = re.findall('Ping:\s(.*?)\s', str(response), re.MULTILINE)
-    download = re.findall('Download:\s(.*?)\s', str(response), re.MULTILINE)
-    upload = re.findall('Upload:\s(.*?)\s', str(response), re.MULTILINE)
-
-    return {
-        'time': timeStamp,
-        'ping': ping[0].replace(',', '.'),
-        'download': download[0].replace(',', '.'),
-        'upload': upload[0].replace(',', '.'),
-    }
-
-
-def save_speed_data(settings, data):
-    if settings['data']['storage'].lower() == 'csv':
-        save_csv_data(settings['data']['db'], data)
-        
-    elif settings['data']['storage'].lower() == 'json':
-        save_json_data(settings['data']['db'], data)
-        
-    elif settings['data']['storage'].lower() == 'sqlite':
-        save_sqlite_data(settings['data']['db'], data)
-        
-    elif settings['data']['storage'] == 'Influx':
-        save_influx_data(settings['data']['db'], settings['data']['dbuser'], settings['data']['dbpswd'], data)
-        
-    else:    
-        raise click.ClickException("Data storage type '{}' is not supported!".format(str(settings['data']['storage'])))
-
-        
-def get_speed_data(settings, count):
-    if settings['data']['storage'].lower() == 'csv':
-        get_csv_data(settings['data']['db'], count)
-        
-    elif settings['data']['storage'].lower() == 'json':
-        get_json_data(settings['data']['db'], count)
-        
-    elif settings['data']['storage'].lower() == 'sqlite':
-        get_sqlite_data(settings['data']['db'], count)
-        
-    elif settings['data']['storage'] == 'Influx':
-        get_influx_data(settings['data']['db'], settings['data']['dbuser'], settings['data']['dbpswd'], count)
-        
-    else:    
-        raise click.ClickException("Data storage type '{}' is not supported!".format(str(settings['data']['storage'])))
