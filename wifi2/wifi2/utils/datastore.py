@@ -1,18 +1,16 @@
 #import sys
-import os
 #import re
 #import time
 #import click
+import os
 import json
 import sqlite3
-
-
 
 
 # =========================================================
 #                  C S V   F U N C T I O N S
 # =========================================================
-def save_csv_data(dbFName, data, csvFmt = None, csvHdr = None):
+def save_csv_data(dbFName, data, csvFmt=None, csvHdr=None):
     """Save data to CSV file.
     
     Args:
@@ -31,20 +29,20 @@ def save_csv_data(dbFName, data, csvFmt = None, csvHdr = None):
     
     try:
         dbFile = open(dbFName, 'a+')
-        if os.stat(dbFName).st_size == 0 and csvHdr != None:
-            dbFile.write(dataHdr)
+        if os.stat(dbFName).st_size == 0 and csvHdr is not None:
+            dbFile.write(csvHdr)
         
         for row in data:
             dbFile.write(csvFmt(row))
 
-    except:
-        raise OSError("Failed to save data to '{}'!".format(dbFName))
+    except OSError as e:
+        raise OSError("Failed to save data to '{}'! [Error {}]".format(dbFName, e))
         
     finally:
         dbFile.close()
     
 
-def get_csv_data(dbFName, count = 1, csvHdr = False):
+def get_csv_data(dbFName, count=1, csvHdr=False):
     """Retrieve data from CSV file.
     
     Args:
@@ -67,8 +65,8 @@ def get_csv_data(dbFName, count = 1, csvHdr = False):
         #    data.append(dbFile.readline())
         print('--- RETRIEVED {} ROWS of CSV DATA ---'.format(str(count)))    
 
-    except:
-        raise OSError("Failed to save data to '{}'!".format(dbFName))
+    except OSError as e:
+        raise OSError("Failed to save data to '{}'! [Error: {}]".format(dbFName, e))
 
     finally:
         dbFile.close()
@@ -96,8 +94,8 @@ def _write_json(dbFName, data):
         dbFile = open(dbFName, "w")
         json.dump(data, dbFile)
         
-    except:
-        raise click.ClickException("Failed to write data to '{}'!".format(dbFName))
+    except OSError as e:
+        raise OSError("Failed to write data to '{}'! [Error: {}]".format(dbFName, e))
         
     finally:
         dbFile.close()
@@ -111,15 +109,13 @@ def save_json_data(dbFName, data):
     
     jsonData = _read_json(dbFName) if os.path.exists(dbFName) else None
     
-    _write_json(dbFName, data if jsonData == None else jsonData + data)
+    _write_json(dbFName, data if jsonData is None else jsonData + data)
 
     
-def get_json_data(dbFName, count = 1):
+def get_json_data(dbFName, count=1):
     pass
 
 
-
-    
 # =========================================================
 #               S Q L I T E   F U N C T I O N S
 # =========================================================
@@ -134,7 +130,7 @@ def _connect_sqlite(dbFName):
         dbConn = sqlite3.connect(dbFName)
         
     except sqlite3.Error as e:
-        raise click.ClickException("Failed to connect to database '{}' [Error: {}]!".format(dbFName, e))
+        raise OSError("Failed to connect to database '{}' [Error: {}]!".format(dbFName, e))
     
     return dbConn
 
@@ -163,7 +159,7 @@ def save_sqlite_data(dbFName, data):
     dbConn.close()
 
 
-def get_sqlite_data(dbFName, count = 1):
+def get_sqlite_data(dbFName, count=1):
     pass
 
     
@@ -174,5 +170,5 @@ def save_influx_data(db, dbuser, dbpswd, data):
     print('-- SAVING TO INFLUX -- {}:{}:{}'.format(db, dbuser, dbpswd))
     
     
-def get_influx_data(db, dbuser, dbpswd, count = 1):
+def get_influx_data(db, dbuser, dbpswd, count=1):
     pass
