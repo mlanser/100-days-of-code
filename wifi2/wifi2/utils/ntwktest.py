@@ -1,11 +1,12 @@
-#import sys
 import os
 import re
 import subprocess
 import time
 #import click
+#import sys
 
-from .datastore import save_*, get_*
+from .datastore import save_csv_data, get_csv_data, save_json_data, get_json_data
+from .datastore import save_sqlite_data, get_sqlite_data, save_influx_data, get_influx_data
 
 
 # =========================================================

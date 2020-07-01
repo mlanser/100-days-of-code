@@ -75,11 +75,13 @@ def get_data_settings(ctxGlobals):
             type=click.Path(),
             default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'data.sqlite'),
         )
-    else:
-        db = click.prompt("Enter database URI")
+    elif storage.lower() == _Influx_:
+        db = click.prompt("Enter Influx database URI")
         dbuser = click.prompt("Enter database user name", default='')
         dbpswd = click.prompt("Enter database user password", default='', hide_input=True)
-    
+    else:
+        raise ValueError("Invalid storage type '{}'".format(section))
+        
     settings = {
         'data': {
             'storage': storage,
@@ -103,17 +105,19 @@ def validate_data_settings(settings):
 
 
 # ---------------------------------------------------------
-#                  Manage SpeedTest Settings
+#                  Manage test Settings
 # ---------------------------------------------------------
-def get_speedtest_settings(ctxGlobals):
+def get_test_settings(ctxGlobals):
     uri = click.prompt(
         "Enter URI for 'speedtest-cli'",
         type=click.Path(),
         default=click.get_app_dir('speedtest-cli')
     )
+    params = None
     settings = {
         'speedtest': {
             'URI': uri,
+            'params': params
             }
         }
     
@@ -122,9 +126,9 @@ def get_speedtest_settings(ctxGlobals):
     return settings
 
 
-def validate_speedtest_settings(settings):
+def validate_test_settings(settings):
     # @TODO: Need to add actual data validation logic here
-    if not settings.has_option('speedtest', 'uri'):
+    if not settings.has_option('test', 'uri'):
         return False
 
     return True
@@ -134,13 +138,22 @@ def validate_speedtest_settings(settings):
 #                  Manage Data Settings
 # ---------------------------------------------------------
 def isvalid_settings(settings):
+    """Validate (to some degree) that application settings (e.g. ensure that
+    that required options are present, etc.).
+    
+    Args:
+        section:    Name of section to update. Or use 'all' to update all settings.
+        
+    Returns:
+        TRUE if settings pass all tests, else FALSE.
+    """
     if not validate_wifi_settings(settings):
         return False
 
     if not validate_data_settings(settings):
         return False
 
-    if not validate_speedtest_settings(settings):
+    if not validate_test_settings(settings):
         return False
 
     #
@@ -151,18 +164,39 @@ def isvalid_settings(settings):
 
 
 def read_settings(ctxGlobals):
+    """Read/parse all application settings from config file.
+    
+    Args:
+        ctxGlobals: List of misc global values stored in CTX app object
+        
+    Returns:
+        Config object with all settings
+        
+    Raises:
+        OSError:    If unable to read config file 
+    """
     if os.path.exists(ctxGlobals['configFName']):
         config = configparser.ConfigParser(allow_no_value=True)
         config.read(ctxGlobals['configFName'])
     else:
-        raise click.ClickException("Config file '{}' does NOT exist or cannot be accessed!".format(ctxGlobals['configFName']))
+        raise OSError("Config file '{}' does NOT exist or cannot be accessed!".format(ctxGlobals['configFName']))
 
     return config
         
         
 def save_settings(ctxGlobals, section):
-    if not section.lower() in ['wifi', 'data', 'speedtest', 'all']:
-        raise click.BadParameter("Invalid section '{}'".format(section))
+    """Save application settings to config file.
+    
+    Args:
+        ctxGlobals: List of misc global values stored in CTX app object
+        section:    Name of section to update. Or use 'all' to update all settings.
+        
+    Raises:
+        ValueError: If invalid section name.
+        OSError:    If unable to read config file 
+    """
+    if not section.lower() in ['wifi', 'data', 'test', 'all']:
+        raise ValueError("Invalid section '{}'".format(section))
 
     config = configparser.ConfigParser(allow_no_value=True)
     if os.path.exists(ctxGlobals['configFName']):
@@ -172,43 +206,53 @@ def save_settings(ctxGlobals, section):
         if not os.path.exists(path):
             os.makedirs(path)
         else:
-            raise click.ClickException("Config file '{}' does NOT exist or cannot be accessed!".format(ctxGlobals['configFName']))
+            raise OSError("Config file '{}' does NOT exist or cannot be accessed!".format(ctxGlobals['configFName']))
     
-    if section == 'all' or section == 'wifi':
+    if section in ['all', 'wifi']:
         config.read_dict(get_wifi_settings(ctxGlobals))
 
-    if section == 'all' or section == 'data':
+    if section in ['all', 'data']:
         config.read_dict(get_data_settings(ctxGlobals))
 
-    if section == 'all' or section == 'speedtest':
-        config.read_dict(get_speedtest_settings(ctxGlobals))
+    if section in ['all', 'test']:
+        config.read_dict(get_test_settings(ctxGlobals))
 
     with open(ctxGlobals['configFName'], 'w') as configFile:
         config.write(configFile)
 
 
 def show_settings(ctxGlobals, section):
-    if not section.lower() in ['wifi', 'data', 'speedtest', 'all']:
-        raise click.BadParameter("Invalid section '{}'".format(section))
+    """Retrieve and display application settings from config file.
+    
+    Args:
+        ctxGlobals: List of misc global values stored in CTX app object
+        section:    Name of section to display. Or use 'all' to view all settings.
+        
+    Raises:
+        ValueError: If invalid section name.
+        OSError:    If unable to read config file 
+    """
+    if not section.lower() in ['wifi', 'data', 'test', 'all']:
+        raise ValueError("Invalid section '{}'".format(section))
 
     settings = read_settings(ctxGlobals)
 
-    if section == 'all' or section == 'wifi':
+    if section in ['all', 'wifi']:
         click.echo("\n--- [wifi] --------------------")
         click.echo("SSID:              {}".format(str(settings['wifi']['ssid'])))
         click.echo("Security:          {}".format(str(settings['wifi']['security'])))
         click.echo("Password:          {}".format(str(settings['wifi']['password'])))
 
-    if section == 'all' or section == 'data':
+    if section in ['all', 'data']:
         click.echo("\n--- [data] --------------------")
         click.echo("Storage:           {}".format(str(settings['data']['storage'])))
         click.echo("Database (db):     {}".format(str(settings['data']['db'])))
         click.echo("DB User  (dbuser:  {}".format(str(settings['data']['dbuser'])))
         click.echo("DB Pswd  (dbpswd): {}".format(str(settings['data']['dbpswd'])))
 
-    if section == 'all' or section == 'speedtest':
-        click.echo("\n--- [speedtest] ---------------")
-        click.echo("URI:               {}".format(str(settings['speedtest']['uri'])))
+    if section in ['all', 'test']:
+        click.echo("\n--- [test] --------------------")
+        click.echo("SpeedTest CLI URI: {}".format(str(settings['speedtest']['uri'])))
 
     click.echo("\n-------------------------------")
     click.echo("CONFIG: '{}'\n".format(ctxGlobals['configFName']))

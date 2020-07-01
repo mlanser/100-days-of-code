@@ -8,7 +8,7 @@ import png
 from pathlib import Path
 from .utils.settings import read_settings, save_settings, show_settings, isvalid_settings
 from .utils.qr import wifi_qr
-from .utils.speedtest import run_speed_test, get_speed_data, save_speed_data
+from .utils.ntwktest import run_speed_test, get_speed_data, save_speed_data
 
 APP_NAME = 'wifi2'
 APP_CONFIG = 'config.ini'
@@ -39,6 +39,12 @@ class ApiKey(click.ParamType):
 #              H E L P E R   F U N C T I O N S
 # =========================================================
 def current_weather(location, api_key='OWM_API_KEY'):
+    """-- DUMMY FUNCTION --
+    
+    Args:
+        location:  blah
+        api_key:   blah
+    """
     url = 'https://api.openweathermap.org/data/2.5/weather'
 
     query_params = {
@@ -52,15 +58,34 @@ def current_weather(location, api_key='OWM_API_KEY'):
 
 
 def show_speed_data(data, table=False):
+    """Format and display SpeedTest data.
+    
+    Args:
+        data:  List of data rows/records if 'table' is TRUE. Else use individual data row/record.
+        table: If TRUE, show multiple data records in table format.
+    """
+    def _formatter(row):
+        return (time.strftime('%m/%d/%y %H:%M', time.localtime(row['time'])), 
+               row['ping'],
+               row['download'],
+               row['upload'])
+                   
     if table:
-        click.echo("-- SHOW SPEED DATA in TABLE format --")
-
+        #          |12345678901234567890|1234567890|1234567890|1234567890|
+        #          |                    |          |          |          |
+        click.echo("      Date/Time     |   PING   |   DOWN   |    UP    ")
+        click.echo("--------------------|----------|----------|----------")
+        click.echo("   MM/DD/YY HH:MM   |    ms    |  MBit/s  |  MBit/s  ")
+        click.echo("--------------------|----------|----------|----------")
+        for row in data:
+            click.echo(" {!s:18s} | {:8.3f} | {:8.2f} |  {:8.2f} ".format(_formatter(row)))
+            
     else:
-        click.echo('DATE: {} {}'.format(time.strftime('%m/%d/%y', time.localtime(data['time'])),
-                                        time.strftime('%H:%M', time.localtime(data['time']))))
-        click.echo('PING: {} ms'.format(data['ping']))
-        click.echo('DOWN: {} Mbit/s'.format(data['download']))
-        click.echo('UP:   {} Mbit/s'.format(data['upload']))
+        click.echo("DATE: {}\nPING: {} ms\nDOWN: {} Mbit/s\nUP:   {} Mbit/s".format(_formatter(data)))
+        #click.echo('DATE: {}'.format(time.strftime('%m/%d/%y %H:%M', time.localtime(data['time'])))
+        #click.echo('PING: {} ms'.format(data['ping']))
+        #click.echo('DOWN: {} Mbit/s'.format(data['download']))
+        #click.echo('UP:   {} Mbit/s'.format(data['upload']))
 
 
 # =========================================================
@@ -100,7 +125,7 @@ def main(ctx, config: str = ''):
 @main.command()
 @click.option(
     '--section',
-    type=click.Choice(['wifi', 'data', 'speedtest', 'all'], case_sensitive=False),
+    type=click.Choice(['wifi', 'data', 'test', 'all'], case_sensitive=False),
     default='',
     help='Config file section name.',
 )
@@ -114,7 +139,7 @@ def configure(ctx, section: str, update: bool):
     """
     Define and store configuration values for a given section in the config file.
     """
-    if not section.lower() in ['wifi', 'data', 'speedtest', 'all']:
+    if not section.lower() in ['wifi', 'data', 'test', 'all']:
         raise click.BadParameter("Invalid section '{}'".format(section))
 
     if update:
@@ -192,7 +217,7 @@ def creds(ctx, how: str, filename: str = ''):
     help="Show history of 'all' or given number (using 'count') of previously saved speed tests.",
 )
 @click.pass_context
-def speedtest(ctx, display: str, save: bool, history: bool, count: int):
+def test(ctx, display: str, save: bool, history: bool, count: int):
     """
     Get speed test data.
     """
@@ -226,7 +251,7 @@ def speedtest(ctx, display: str, save: bool, history: bool, count: int):
 
         for i in range(0, count):
             try:
-                data.append(run_speed_test(ctx.obj['settings']['speedtest']))
+                data.append(run_speed_test(ctx.obj['settings']['test']))
             
             except OSError as e:     
                 raise click.ClickException(e)
@@ -271,7 +296,8 @@ def debug(ctx, msg: str):
     Show debug message.
     """
     click.echo(msg)
-    click.echo("CONFIG: '{}'".format(ctx.obj['globals']['configFName']))
+    click.echo("\n----------------------------------------------------")
+    click.echo("App Configuration:\n{}\n".format(ctx.obj['globals']['configFName']))
     
     
 # =========================================================
