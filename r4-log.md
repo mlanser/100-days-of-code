@@ -67,3 +67,7 @@ Started on [Sunday June 14, 2020].
 
 ### R4D18 - 01JUL2020
 * More refactoring and cleanup.
+* Finished CSV data store features.
+
+### R4D19 - 02JUL2020
+* More refactoring and cleanup.
