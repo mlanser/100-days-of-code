@@ -61,3 +61,9 @@ Started on [Sunday June 14, 2020].
 ### R4D16 - 29JUN2020
 * More refactoring and cleanup.
 * Adding more error handling and smarter utility functions.
+
+### R4D17 - 30JUN2020
+* More refactoring and cleanup.
+
+### R4D18 - 01JUL2020
+* More refactoring and cleanup.

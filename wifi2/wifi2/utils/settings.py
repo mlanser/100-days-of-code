@@ -14,7 +14,7 @@ _Influx_ = 'influx'
 # =========================================================
 #                  Manage WiFi Settings
 # ---------------------------------------------------------
-def get_wifi_settings(ctxGlobals):
+def _get_wifi_settings(ctxGlobals):
     ssid = click.prompt("Enter network SSID")
     password = click.prompt("Enter WiFi password")
     security = click.prompt(
@@ -34,7 +34,7 @@ def get_wifi_settings(ctxGlobals):
     return settings
 
 
-def validate_wifi_settings(settings):
+def _validate_wifi_settings(settings):
     # @TODO: Need to add actual data validation logic here
     if not settings.has_option('wifi', 'ssid'): 
         return False
@@ -49,7 +49,7 @@ def validate_wifi_settings(settings):
 # ---------------------------------------------------------
 #                  Manage Data Settings
 # ---------------------------------------------------------
-def get_data_settings(ctxGlobals):
+def _get_data_settings(ctxGlobals):
     dbuser = None
     dbpswd = None
 
@@ -94,7 +94,7 @@ def get_data_settings(ctxGlobals):
     return settings
 
 
-def validate_data_settings(settings):
+def _validate_data_settings(settings):
     # @TODO: Need to add actual data validation logic here
     if not settings.has_option('data', 'storage'): 
         return False
@@ -105,9 +105,9 @@ def validate_data_settings(settings):
 
 
 # ---------------------------------------------------------
-#                  Manage test Settings
+#                Manage Misc Test Settings
 # ---------------------------------------------------------
-def get_test_settings(ctxGlobals):
+def _get_speedtest_settings(ctxGlobals):
     uri = click.prompt(
         "Enter URI for 'speedtest-cli'",
         type=click.Path(),
@@ -126,10 +126,37 @@ def get_test_settings(ctxGlobals):
     return settings
 
 
-def validate_test_settings(settings):
+def _validate_speedtest_settings(settings):
     # @TODO: Need to add actual data validation logic here
-    if not settings.has_option('test', 'uri'):
+    if not settings.has_option('speedtest', 'uri'):
         return False
+
+    return True
+
+
+def _get_ntwktest_settings(ctxGlobals):
+    uri = click.prompt(
+        "Enter URI for 'ntwktest-cli'",
+        type=click.Path(),
+        default=click.get_app_dir('ntwktest-cli')
+    )
+    params = None
+    settings = {
+        'ntwktest': {
+            'URI': uri,
+            'params': params
+            }
+        }
+    
+    # /usr/local/bin/????
+    
+    return settings
+
+
+def _validate_ntwktest_settings(settings):
+    # @TODO: Need to add actual data validation logic here
+    #if not settings.has_option('ntwktest', 'uri'):
+    #    return False
 
     return True
 
@@ -147,18 +174,21 @@ def isvalid_settings(settings):
     Returns:
         TRUE if settings pass all tests, else FALSE.
     """
-    if not validate_wifi_settings(settings):
-        return False
-
-    if not validate_data_settings(settings):
-        return False
-
-    if not validate_test_settings(settings):
-        return False
-
     #
     # Need to put in some actual tests here
     #
+
+    if not _validate_wifi_settings(settings):
+        return False
+
+    if not _validate_data_settings(settings):
+        return False
+
+    if not _validate_speedtest_settings(settings):
+        return False
+    
+    if not _validate_ntwktest_settings(settings):
+        return False
 
     return True
 
@@ -209,13 +239,14 @@ def save_settings(ctxGlobals, section):
             raise OSError("Config file '{}' does NOT exist or cannot be accessed!".format(ctxGlobals['configFName']))
     
     if section in ['all', 'wifi']:
-        config.read_dict(get_wifi_settings(ctxGlobals))
+        config.read_dict(_get_wifi_settings(ctxGlobals))
 
     if section in ['all', 'data']:
-        config.read_dict(get_data_settings(ctxGlobals))
+        config.read_dict(_get_data_settings(ctxGlobals))
 
     if section in ['all', 'test']:
-        config.read_dict(get_test_settings(ctxGlobals))
+        config.read_dict(_get_speedtest_settings(ctxGlobals))
+        config.read_dict(_get_ntwktest_settings(ctxGlobals))
 
     with open(ctxGlobals['configFName'], 'w') as configFile:
         config.write(configFile)
@@ -232,27 +263,39 @@ def show_settings(ctxGlobals, section):
         ValueError: If invalid section name.
         OSError:    If unable to read config file 
     """
+
+    def _get_option(settings, section, option=None):
+        outStr = '- n/a -'
+        
+        if section in settings:
+            if option is not None and option in settings[section]:
+                outStr = str(settings[section][option])
+                
+        return outStr
+    
+        
     if not section.lower() in ['wifi', 'data', 'test', 'all']:
         raise ValueError("Invalid section '{}'".format(section))
-
+        
     settings = read_settings(ctxGlobals)
 
     if section in ['all', 'wifi']:
         click.echo("\n--- [wifi] --------------------")
-        click.echo("SSID:              {}".format(str(settings['wifi']['ssid'])))
-        click.echo("Security:          {}".format(str(settings['wifi']['security'])))
-        click.echo("Password:          {}".format(str(settings['wifi']['password'])))
+        click.echo("SSID:              {}".format(_get_option(settings, 'wifi', 'ssid')))
+        click.echo("Security:          {}".format(_get_option(settings, 'wifi', 'security')))
+        click.echo("Password:          {}".format(_get_option(settings, 'wifi', 'password')))
 
     if section in ['all', 'data']:
         click.echo("\n--- [data] --------------------")
-        click.echo("Storage:           {}".format(str(settings['data']['storage'])))
-        click.echo("Database (db):     {}".format(str(settings['data']['db'])))
-        click.echo("DB User  (dbuser:  {}".format(str(settings['data']['dbuser'])))
-        click.echo("DB Pswd  (dbpswd): {}".format(str(settings['data']['dbpswd'])))
+        click.echo("Storage:           {}".format(_get_option(settings, 'data', 'storage')))
+        click.echo("Database (db):     {}".format(_get_option(settings, 'data', 'db')))
+        click.echo("DB User  (dbuser:  {}".format(_get_option(settings, 'data', 'dbuser')))
+        click.echo("DB Pswd  (dbpswd): {}".format(_get_option(settings, 'data', 'dbpswd')))
 
     if section in ['all', 'test']:
         click.echo("\n--- [test] --------------------")
-        click.echo("SpeedTest CLI URI: {}".format(str(settings['speedtest']['uri'])))
+        click.echo("SpeedTest CLI URI: {}".format(_get_option(settings, 'speedtest', 'uri')))
+        click.echo("NtwkTest CLI URI:  {}".format(_get_option(settings, 'ntwktest', 'uri')))
 
     click.echo("\n-------------------------------")
     click.echo("CONFIG: '{}'\n".format(ctxGlobals['configFName']))

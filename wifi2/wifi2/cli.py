@@ -3,12 +3,12 @@ import os
 import re
 import click
 import time
-import png
+#import png
 
 from pathlib import Path
 from .utils.settings import read_settings, save_settings, show_settings, isvalid_settings
 from .utils.qr import wifi_qr
-from .utils.ntwktest import run_speed_test, get_speed_data, save_speed_data
+from .utils.speedtest import run_speed_test, get_speed_data, save_speed_data
 
 APP_NAME = 'wifi2'
 APP_CONFIG = 'config.ini'
@@ -38,6 +38,15 @@ class ApiKey(click.ParamType):
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
+def _data_formatter(data):
+    return (
+        time.strftime('%m/%d/%y %H:%M', time.localtime(data['time'])), 
+        data['ping'],
+        data['download'],
+        data['upload']
+    )
+
+
 def current_weather(location, api_key='OWM_API_KEY'):
     """-- DUMMY FUNCTION --
     
@@ -57,37 +66,44 @@ def current_weather(location, api_key='OWM_API_KEY'):
     return response.json()['weather'][0]['description']
 
 
-def show_speed_data(data, table=False):
+def show_speed_data(data, raw=False):
     """Format and display SpeedTest data.
     
     Args:
-        data:  List of data rows/records if 'table' is TRUE. Else use individual data row/record.
-        table: If TRUE, show multiple data records in table format.
+        data: Individual data row/record as list.
+        raw:  If TRUE, data is is 'raw' format.
     """
-    def _formatter(row):
-        return (time.strftime('%m/%d/%y %H:%M', time.localtime(row['time'])), 
-               row['ping'],
-               row['download'],
-               row['upload'])
-                   
-    if table:
-        #          |12345678901234567890|1234567890|1234567890|1234567890|
-        #          |                    |          |          |          |
-        click.echo("      Date/Time     |   PING   |   DOWN   |    UP    ")
-        click.echo("--------------------|----------|----------|----------")
-        click.echo("   MM/DD/YY HH:MM   |    ms    |  MBit/s  |  MBit/s  ")
-        click.echo("--------------------|----------|----------|----------")
-        for row in data:
-            click.echo(" {!s:18s} | {:8.3f} | {:8.2f} |  {:8.2f} ".format(_formatter(row)))
-            
-    else:
-        click.echo("DATE: {}\nPING: {} ms\nDOWN: {} Mbit/s\nUP:   {} Mbit/s".format(_formatter(data)))
-        #click.echo('DATE: {}'.format(time.strftime('%m/%d/%y %H:%M', time.localtime(data['time'])))
-        #click.echo('PING: {} ms'.format(data['ping']))
-        #click.echo('DOWN: {} Mbit/s'.format(data['download']))
-        #click.echo('UP:   {} Mbit/s'.format(data['upload']))
+    template = "DATE: {}\nPING: {} ms\nDOWN: {} Mbit/s\nUP:   {} Mbit/s"
+    # @todo validate that we have enough data points in list
+    click.echo(template.format(*_data_formatter(data)) if raw else template.format(' '.join((data[0], data[1])), data[2], data[3], data[4]))
+        
 
+def show_speed_data_table(data, raw=False):
+    """Format and display SpeedTest data.
+    
+    Args:
+        data: List of data rows/records if 'table' is TRUE. Else use individual data row/record.
+        raw:  If TRUE, data is is 'raw' format.
+    """
+    
+    template = " {!s:18s} | {:8.3f} | {:8.2f} | {:8.2f} " if raw else " {:18s} | {:8s} | {:8s} | {:8s} "
+    
+    
+    click.echo()
+    #          |12345678901234567890|1234567890|1234567890|1234567890|
+    #          |                    |          |          |          |
+    click.echo("      Date/Time     |   PING   |   DOWN   |    UP    ")
+    click.echo("--------------------|----------|----------|----------")
+    click.echo("   MM/DD/YY HH:MM   |    ms    |  MBit/s  |  MBit/s  ")
+    click.echo("--------------------|----------|----------|----------")
+    for row in data:
+        #click.echo(" {!s:18s} | {:8.3f} | {:8.2f} |  {:8.2f} ".format(*_formatter(row)))
+        #click.echo(" {:18s} | {:8s} | {:8s} |  {:8s} ".format(' '.join(row[0], row[1]), row[2], row[3], row[4])
+        click.echo(template.format(*_data_formatter(row)) if raw else template.format(' '.join((row[0], row[1])), row[2], row[3], row[4]))
 
+    click.echo()
+
+    
 # =========================================================
 #                C L I C K   C O M M A N D S
 # =========================================================
@@ -126,13 +142,13 @@ def main(ctx, config: str = ''):
 @click.option(
     '--section',
     type=click.Choice(['wifi', 'data', 'test', 'all'], case_sensitive=False),
-    default='',
+    default='all', show_default=True,
     help='Config file section name.',
 )
 @click.option(
     '--set/--show', 'update',
     default=True,
-    help='Set (and (save) application settings for a given section, or just show/display current settings.',
+    help='Set and (save) application settings for a given section, or just show/display current settings.',
 )
 @click.pass_context
 def configure(ctx, section: str, update: bool):
@@ -155,11 +171,11 @@ def configure(ctx, section: str, update: bool):
 @click.option(
     '--how',
     type=click.Choice(['terminal', 'png'], case_sensitive=False),
-    default='terminal',
+    default='terminal', show_default=True,
     help='Display QR code with WiFi creds in terminal or save to file.',
 )
 @click.option(
-    '--filename', 
+    '-f', '--fname', 'filename', 
     type=click.Path(),
     default='',
     help='Full path to PNG file')
@@ -181,12 +197,19 @@ def creds(ctx, how: str, filename: str = ''):
     if how.lower() == 'terminal':
         click.echo(qr.terminal())
     else:
-        if filename.strip() == '':
-            # @todo Check if path to file exists.
-            #       If not, create req'd dirs
-            filename = '{}/{}-QR.png'.format(Path.home(), str(ctx.obj['settings']['wifi']['ssid']).upper().replace(' ', '-'))
+        cleanFName = filename.strip().replace(' ', '-')
+        if not cleanFName:
+            cleanFName = '{}/{}-QR.png'.format(Path.home(), str(ctx.obj['settings']['wifi']['ssid']).upper().replace(' ', '-'))
+            
+        path = os.path.dirname(os.path.abspath(cleanFName))
+        if not os.path.exists(path):
+            os.makedirs(path)
         
-        qr.png(filename, scale=10)
+        try:
+            qr.png(filename, scale=10)
+        except OSError as e:
+            raise click.ClickException("Unable to save PNG file! [Error: {}]".format(e))
+            
         click.echo("Saved QR code to '{}'".format(filename))
     
     
@@ -197,7 +220,7 @@ def creds(ctx, how: str, filename: str = ''):
 @click.option(
     '--display',
     type=click.Choice(['stdout', 'epaper', 'none'], case_sensitive=False),
-    default='stdout',
+    default='stdout', show_default=True,
     help='Display speed test data on STDOUT or ePaper screen.',
 )
 @click.option(
@@ -206,9 +229,9 @@ def creds(ctx, how: str, filename: str = ''):
     help='Save speed test data to data storage.',
 )
 @click.option(
-    '--count',
+    '--count', 'numRun',
     type=click.IntRange(1, APP_MAX_RUNS, clamp=True),
-    default=1,
+    default=1, show_default=True,
     help='Number (1-100) of tests to run in sequence.',
 )
 @click.option(
@@ -217,15 +240,15 @@ def creds(ctx, how: str, filename: str = ''):
     help="Show history of 'all' or given number (using 'count') of previously saved speed tests.",
 )
 @click.pass_context
-def test(ctx, display: str, save: bool, history: bool, count: int):
+def speedtest(ctx, display: str, save: bool, history: bool, numRun: int):
     """
     Get speed test data.
     """
     
-    def csv_data_header():
+    def _csv_data_header():
         return 'Date,Time,Ping (ms),Download (Mbit/s),Upload (Mbit/s)\r\n'
     
-    def csv_data_formatter(dataRow):
+    def _csv_data_formatter(dataRow):
         return '{},{},{},{},{}\r\n'.format(
                 time.strftime('%m/%d/%y', time.localtime(dataRow['time'])),
                 time.strftime('%H:%M', time.localtime(dataRow['time'])),
@@ -240,7 +263,7 @@ def test(ctx, display: str, save: bool, history: bool, count: int):
     # Only show historic data    
     if history:
         try:
-            show_speed_data(get_speed_data(ctx.obj['settings']['data'], count), table=True)
+            show_speed_data_table(get_speed_data(ctx.obj['settings']['data'], numRun), raw=False)
             
         except OSError as e:     
             raise click.ClickException(e)
@@ -249,16 +272,16 @@ def test(ctx, display: str, save: bool, history: bool, count: int):
     else:
         data = []
 
-        for i in range(0, count):
+        for i in range(0, numRun):
             try:
-                data.append(run_speed_test(ctx.obj['settings']['test']))
+                data.append(run_speed_test(ctx.obj['settings']['speedtest']))
             
             except OSError as e:     
                 raise click.ClickException(e)
 
             if display.lower() == 'stdout':
-                click.echo('-- Test {} of {} --'.format(str(i + 1), str(count)))
-                show_speed_data(data[i])
+                click.echo('-- Internet Speed Test {} of {} --'.format(str(i + 1), str(numRun)))
+                show_speed_data(data[i], raw=True)
 
             elif display.lower() == 'epaper':
                 #
@@ -267,13 +290,13 @@ def test(ctx, display: str, save: bool, history: bool, count: int):
                 #
                 #
 
-            if (i + 1) < count:
+            if (i + 1) < numRun:
                 time.sleep(APP_SLEEP)
 
         if save:
             try:
                 if ctx.obj['settings']['data']['storage'].lower() == 'csv':
-                    save_speed_data(ctx.obj['settings']['data'], data, csv_data_formatter, csv_data_header)
+                    save_speed_data(ctx.obj['settings']['data'], data, _csv_data_formatter, _csv_data_header)
                 else:    
                     save_speed_data(ctx.obj['settings']['data'], data)
                 
@@ -287,7 +310,7 @@ def test(ctx, display: str, save: bool, history: bool, count: int):
 @main.command()
 @click.option(
     '--msg',
-    default='Testing 1-2-3',
+    default='Testing 1-2-3', show_default=True,
     help='Display speed test data on STDOUT or ePaper screen.',
 )
 @click.pass_context

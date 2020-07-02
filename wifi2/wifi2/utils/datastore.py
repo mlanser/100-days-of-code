@@ -42,34 +42,44 @@ def save_csv_data(dbFName, data, csvFmt=None, csvHdr=None):
         dbFile.close()
     
 
-def get_csv_data(dbFName, count=1, csvHdr=False):
+def get_csv_data(dbFName, numRecs=1, skipHdr=True):
     """Retrieve data from CSV file.
     
     Args:
         dbFName: CSV file name
-        count:   Number of records to retrieve
-        csvHdr:  If FALSE, assume first row is header and start reading next row as 1st data row
+        numRecs: Number of records to retrieve
+        skipHdr: If TRUE, assume first row is header and start reading next row as 1st data row
         
     Raises:
-        OSError: If unable to access or save data to CSV file.
+        OSError: If unable to access or read data from CSV file.
     """
     try:
+        data = []
         dbFile = open(dbFName, 'r')
         
-        hdrRow = dbFile.readline() if csvHdr else None 
-        print(type(hdrRow))
-        print(hdrRow)
-        
-        #data = []
-        #for i in range(0, count):
-        #    data.append(dbFile.readline())
-        print('--- RETRIEVED {} ROWS of CSV DATA ---'.format(str(count)))    
+        raw = dbFile.readline().rstrip('\n')
+        if not raw:
+            raise OSError("Empty data file")
+
+        if skipHdr:
+            numRecs += 1
+        else:    
+            data.append(raw.split(','))
+            
+        for i in range(1, numRecs):
+            raw = dbFile.readline().rstrip('\n')
+            if raw:
+                data.append(raw.split(','))
+            else:
+                break
 
     except OSError as e:
-        raise OSError("Failed to save data to '{}'! [Error: {}]".format(dbFName, e))
+        raise OSError("Failed to read data from '{}'! [Error: {}]".format(dbFName, e))
 
     finally:
         dbFile.close()
+        
+    return data    
 
     
 # =========================================================
@@ -112,8 +122,8 @@ def save_json_data(dbFName, data):
     _write_json(dbFName, data if jsonData is None else jsonData + data)
 
     
-def get_json_data(dbFName, count=1):
-    pass
+def get_json_data(dbFName, numRecs=1):
+    return []
 
 
 # =========================================================
@@ -159,8 +169,8 @@ def save_sqlite_data(dbFName, data):
     dbConn.close()
 
 
-def get_sqlite_data(dbFName, count=1):
-    pass
+def get_sqlite_data(dbFName, numRecs=1):
+    return []
 
     
 # =========================================================
@@ -170,5 +180,5 @@ def save_influx_data(db, dbuser, dbpswd, data):
     print('-- SAVING TO INFLUX -- {}:{}:{}'.format(db, dbuser, dbpswd))
     
     
-def get_influx_data(db, dbuser, dbpswd, count=1):
-    pass
+def get_influx_data(db, dbuser, dbpswd, numRecs=1):
+    return []

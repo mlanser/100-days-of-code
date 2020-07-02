@@ -12,31 +12,30 @@ from .datastore import save_sqlite_data, get_sqlite_data, save_influx_data, get_
 # =========================================================
 #          S P E E D T E S T   F U N C T I O N S
 # =========================================================
-def run_ntwk_test(settings):
-    # @TODO Finish this function
-    """Run tests on current network connection to get misc data points.
+def run_speed_test(settings):
+    """Run speed test on current internet connection to get data points for PING, UP-and DOWNLOAD speeds.
     
     Args:
         settings: list with application settings
         
     Returns:
-        Dict record with ???
+        Dict record with timestamp, ping, download, and upload times.
         
     Raises:
-        OSError: If '???' sub-process cannot run and/or exits with non-zero error code.
+        OSError: If 'speedtest-cli' sub-process cannot run and/or exits with non-zero error code.
     """
     try:
-        proc = subprocess.Popen('ntwktest-cli --simple',
+        proc = subprocess.Popen('speedtest-cli --simple',
                                 shell=True,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
         
     except OSError as e:
-        raise OSError("Failed to run 'ntwktest-cli' utility! [Orig: {}]".format(e))
+        raise OSError("Failed to run 'speedtest-cli' utility! [Orig: {}]".format(e))
 
     proc.wait() 
     if proc.returncode != 0:
-        raise OSError("Failed to run and/or missing 'ntwktest-cli' utility! [Code: {}]".format(str(proc.returncode)))
+        raise OSError("Failed to run and/or missing 'speedtest-cli' utility! [Code: {}]".format(str(proc.returncode)))
         
     response = proc.stdout.read()
     
@@ -56,9 +55,8 @@ def run_ntwk_test(settings):
 # =========================================================
 #                D A T A   F U N C T I O N S
 # =========================================================
-def save_ntwk_data(settings, data, dataFmt = None, dataHdr = None):
-    # @TODO Finish this function
-    """Save ntwkTest data to preferred data store as defined in application settings.
+def save_speed_data(settings, data, dataFmt = None, dataHdr = None):
+    """Save SpeedTest data to preferred data store as defined in application settings.
     
     Args:
         settings: list with data store settings
@@ -84,28 +82,30 @@ def save_ntwk_data(settings, data, dataFmt = None, dataHdr = None):
         raise OSError("Data storage type '{}' is not supported!".format(str(settings['storage'])))
 
         
-def get_ntwk_data(settings, count):
-    # @TODO Finish this function
-    """Retrieve ntwkTest data records from preferred data store as defined in application settings.
+def get_speed_data(settings, numRecs):
+    """Retrieve SpeedTest data records from preferred data store as defined in application settings.
     
     Args:
-        settings: list with data store settings
-        count:    number of records to retrieve
+        settings: List with data store settings
+        numRecs:  Number of records to retrieve
+    
+    Returns:
+        List of data records
         
     Raises:
         OSError: If data store is not supported and/or cannot be accessed.
     """
     if settings['storage'].lower() == 'csv':
-        get_csv_data(settings['db'], count)
+        return get_csv_data(settings['db'], numRecs, True)
         
     elif settings['storage'].lower() == 'json':
-        get_json_data(settings['db'], count)
+        return get_json_data(settings['db'], numRecs)
         
     elif settings['storage'].lower() == 'sqlite':
-        get_sqlite_data(settings['db'], count)
+        return get_sqlite_data(settings['db'], numRecs)
         
     elif settings['storage'] == 'Influx':
-        get_influx_data(settings['db'], settings['dbuser'], settings['dbpswd'], count)
+        return get_influx_data(settings['db'], settings['dbuser'], settings['dbpswd'], numRecs)
         
     else:    
         raise OSError("Data storage type '{}' is not supported!".format(str(settings['storage'])))
