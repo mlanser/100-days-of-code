@@ -55,7 +55,7 @@ def run_speed_test(settings):
 # =========================================================
 #                D A T A   F U N C T I O N S
 # =========================================================
-def save_speed_data(settings, data, dataFmt = None, dataHdr = None):
+def save_speed_data(settings, data, dataFmt=None, dataHdr=None):
     """Save SpeedTest data to preferred data store as defined in application settings.
     
     Args:

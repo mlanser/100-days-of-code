@@ -8,7 +8,6 @@ _SQLite_ = 'sqlite'
 _Influx_ = 'influx'
 
 
-
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
@@ -80,12 +79,12 @@ def _get_data_settings(ctxGlobals):
         dbuser = click.prompt("Enter database user name", default='')
         dbpswd = click.prompt("Enter database user password", default='', hide_input=True)
     else:
-        raise ValueError("Invalid storage type '{}'".format(section))
+        raise ValueError("Invalid storage type '{}'".format(storage))
         
     settings = {
         'data': {
             'storage': storage,
-            'db': db,
+            'db': "'" + db + "'",
             'dbuser': dbuser,
             'dbpswd': dbpswd,
             }
@@ -116,7 +115,7 @@ def _get_speedtest_settings(ctxGlobals):
     params = None
     settings = {
         'speedtest': {
-            'URI': uri,
+            'URI': "'" + uri + "'",
             'params': params
             }
         }
@@ -143,7 +142,7 @@ def _get_ntwktest_settings(ctxGlobals):
     params = None
     settings = {
         'ntwktest': {
-            'URI': uri,
+            'URI': "'" + uri + "'",
             'params': params
             }
         }
@@ -169,7 +168,7 @@ def isvalid_settings(settings):
     that required options are present, etc.).
     
     Args:
-        section:    Name of section to update. Or use 'all' to update all settings.
+        settings: Settings to validate
         
     Returns:
         TRUE if settings pass all tests, else FALSE.
@@ -264,16 +263,15 @@ def show_settings(ctxGlobals, section):
         OSError:    If unable to read config file 
     """
 
-    def _get_option(settings, section, option=None):
+    def _get_option(_settings, _section, _option=None):
         outStr = '- n/a -'
         
-        if section in settings:
-            if option is not None and option in settings[section]:
-                outStr = str(settings[section][option])
+        if _section in _settings:
+            if _option is not None and _option in _settings[_section]:
+                outStr = str(_settings[_section][_option])
                 
         return outStr
-    
-        
+
     if not section.lower() in ['wifi', 'data', 'test', 'all']:
         raise ValueError("Invalid section '{}'".format(section))
         

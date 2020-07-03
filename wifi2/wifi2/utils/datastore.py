@@ -22,6 +22,8 @@ def save_csv_data(dbFName, data, csvFmt=None, csvHdr=None):
     Raises:
         OSError: If unable to access or save data to CSV file.
     """
+    dbFile = None
+
     if not os.path.exists(dbFName):
         path = os.path.dirname(os.path.abspath(dbFName))
         if not os.path.exists(path):
@@ -30,7 +32,7 @@ def save_csv_data(dbFName, data, csvFmt=None, csvHdr=None):
     try:
         dbFile = open(dbFName, 'a+')
         if os.stat(dbFName).st_size == 0 and csvHdr is not None:
-            dbFile.write(csvHdr)
+            dbFile.write(csvHdr())
         
         for row in data:
             dbFile.write(csvFmt(row))
@@ -39,7 +41,8 @@ def save_csv_data(dbFName, data, csvFmt=None, csvHdr=None):
         raise OSError("Failed to save data to '{}'! [Error {}]".format(dbFName, e))
         
     finally:
-        dbFile.close()
+        if dbFile is not None:
+            dbFile.close()
     
 
 def get_csv_data(dbFName, numRecs=1, skipHdr=True):
@@ -53,11 +56,13 @@ def get_csv_data(dbFName, numRecs=1, skipHdr=True):
     Raises:
         OSError: If unable to access or read data from CSV file.
     """
+    dbFile = None
+    data = []
+
     try:
-        data = []
         dbFile = open(dbFName, 'r')
-        
         raw = dbFile.readline().rstrip('\n')
+
         if not raw:
             raise OSError("Empty data file")
 
@@ -74,10 +79,11 @@ def get_csv_data(dbFName, numRecs=1, skipHdr=True):
                 break
 
     except OSError as e:
-        raise OSError("Failed to read data from '{}'! [Error: {}]".format(dbFName, e))
+        raise OSError("Failed to read data from '{}'! -- {}".format(dbFName, e))
 
     finally:
-        dbFile.close()
+        if dbFile is not None:
+            dbFile.close()
         
     return data    
 
@@ -90,9 +96,9 @@ def _read_json(dbFName):
         dbFile = open(dbFName, "r")
         data = json.load(dbFile)
         
-    except json.JSONDecodeError:
-        return None             # We'll just 'overwrite' the file if it's empty 
-                                # or if we can't read it.
+    except json.JSONDecodeError:    # We'll just 'overwrite' the file
+        return None                 #  if it's empty or if we can't read it.
+
     finally:
         dbFile.close()
         
@@ -112,17 +118,44 @@ def _write_json(dbFName, data):
     
     
 def save_json_data(dbFName, data):
+    """Save data to JSON file.
+
+    Args:
+        dbFName: CSV file name
+        data:    List with one or more data rows
+
+    Raises:
+        OSError: If unable to access or save data to CSV file.
+    """
     if not os.path.exists(dbFName):
         path = os.path.dirname(os.path.abspath(dbFName))
         if not os.path.exists(path):
             os.makedirs(path)
-    
-    jsonData = _read_json(dbFName) if os.path.exists(dbFName) else None
-    
-    _write_json(dbFName, data if jsonData is None else jsonData + data)
+    try:
+        jsonData = _read_json(dbFName) if os.path.exists(dbFName) else None
+        _write_json(dbFName, data if jsonData is None else jsonData + data)
 
-    
+    except OSError as e:
+        raise OSError("Failed to access '{}'! [Error {}]".format(dbFName, e))
+
+
 def get_json_data(dbFName, numRecs=1):
+    """Retrieve data from CSV file.
+
+    Args:
+        dbFName: JSON file name
+        numRecs: Number of records to retrieve
+
+    Raises:
+        OSError: If unable to access or read data from CSV file.
+    """
+    try:
+        jsonData = _read_json(dbFName) if os.path.exists(dbFName) else None
+        print(len(jsonData))
+
+    except OSError as e:
+        raise OSError("Failed to read data from '{}'! [Error: {}]".format(dbFName, e))
+
     return []
 
 

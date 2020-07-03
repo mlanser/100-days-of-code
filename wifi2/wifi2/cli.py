@@ -87,8 +87,7 @@ def show_speed_data_table(data, raw=False):
     """
     
     template = " {!s:18s} | {:8.3f} | {:8.2f} | {:8.2f} " if raw else " {:18s} | {:8s} | {:8s} | {:8s} "
-    
-    
+
     click.echo()
     #          |12345678901234567890|1234567890|1234567890|1234567890|
     #          |                    |          |          |          |
@@ -97,8 +96,6 @@ def show_speed_data_table(data, raw=False):
     click.echo("   MM/DD/YY HH:MM   |    ms    |  MBit/s  |  MBit/s  ")
     click.echo("--------------------|----------|----------|----------")
     for row in data:
-        #click.echo(" {!s:18s} | {:8.3f} | {:8.2f} |  {:8.2f} ".format(*_formatter(row)))
-        #click.echo(" {:18s} | {:8s} | {:8s} |  {:8s} ".format(' '.join(row[0], row[1]), row[2], row[3], row[4])
         click.echo(template.format(*_data_formatter(row)) if raw else template.format(' '.join((row[0], row[1])), row[2], row[3], row[4]))
 
     click.echo()
@@ -300,7 +297,7 @@ def speedtest(ctx, display: str, save: bool, history: bool, numRun: int):
                 else:    
                     save_speed_data(ctx.obj['settings']['data'], data)
                 
-            except OSError as e:     
+            except OSError as e:
                 raise click.ClickException(e)
 
                 
