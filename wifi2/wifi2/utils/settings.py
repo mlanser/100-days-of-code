@@ -84,7 +84,7 @@ def _get_data_settings(ctxGlobals):
     settings = {
         'data': {
             'storage': storage,
-            'db': "'" + db + "'",
+            'db': db,
             'dbuser': dbuser,
             'dbpswd': dbpswd,
             }
@@ -115,7 +115,7 @@ def _get_speedtest_settings(ctxGlobals):
     params = None
     settings = {
         'speedtest': {
-            'URI': "'" + uri + "'",
+            'URI': uri,
             'params': params
             }
         }
@@ -142,7 +142,7 @@ def _get_ntwktest_settings(ctxGlobals):
     params = None
     settings = {
         'ntwktest': {
-            'URI': "'" + uri + "'",
+            'URI': uri,
             'params': params
             }
         }
@@ -263,13 +263,13 @@ def show_settings(ctxGlobals, section):
         OSError:    If unable to read config file 
     """
 
-    def _get_option(_settings, _section, _option=None):
+    def _get_option_val(_settings, _section, _option=None):
         outStr = '- n/a -'
-        
-        if _section in _settings:
-            if _option is not None and _option in _settings[_section]:
+
+        if _section is not None and _option is not None:
+            if _settings.has_option(_section, _option):
                 outStr = str(_settings[_section][_option])
-                
+
         return outStr
 
     if not section.lower() in ['wifi', 'data', 'test', 'all']:
@@ -279,21 +279,21 @@ def show_settings(ctxGlobals, section):
 
     if section in ['all', 'wifi']:
         click.echo("\n--- [wifi] --------------------")
-        click.echo("SSID:              {}".format(_get_option(settings, 'wifi', 'ssid')))
-        click.echo("Security:          {}".format(_get_option(settings, 'wifi', 'security')))
-        click.echo("Password:          {}".format(_get_option(settings, 'wifi', 'password')))
+        click.echo("SSID:              {}".format(_get_option_val(settings, 'wifi', 'ssid')))
+        click.echo("Security:          {}".format(_get_option_val(settings, 'wifi', 'security')))
+        click.echo("Password:          {}".format(_get_option_val(settings, 'wifi', 'password')))
 
     if section in ['all', 'data']:
         click.echo("\n--- [data] --------------------")
-        click.echo("Storage:           {}".format(_get_option(settings, 'data', 'storage')))
-        click.echo("Database (db):     {}".format(_get_option(settings, 'data', 'db')))
-        click.echo("DB User  (dbuser:  {}".format(_get_option(settings, 'data', 'dbuser')))
-        click.echo("DB Pswd  (dbpswd): {}".format(_get_option(settings, 'data', 'dbpswd')))
+        click.echo("Storage:           {}".format(_get_option_val(settings, 'data', 'storage')))
+        click.echo("Database (db):     {}".format(_get_option_val(settings, 'data', 'db')))
+        click.echo("DB User  (dbuser:  {}".format(_get_option_val(settings, 'data', 'dbuser')))
+        click.echo("DB Pswd  (dbpswd): {}".format(_get_option_val(settings, 'data', 'dbpswd')))
 
     if section in ['all', 'test']:
         click.echo("\n--- [test] --------------------")
-        click.echo("SpeedTest CLI URI: {}".format(_get_option(settings, 'speedtest', 'uri')))
-        click.echo("NtwkTest CLI URI:  {}".format(_get_option(settings, 'ntwktest', 'uri')))
+        click.echo("SpeedTest CLI URI: {}".format(_get_option_val(settings, 'speedtest', 'uri')))
+        click.echo("NtwkTest CLI URI:  {}".format(_get_option_val(settings, 'ntwktest', 'uri')))
 
     click.echo("\n-------------------------------")
     click.echo("CONFIG: '{}'\n".format(ctxGlobals['configFName']))

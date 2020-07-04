@@ -5,4 +5,5 @@ venv
 *.temp
 _NUKE_
 _OLD_
+_temp_*.*
 

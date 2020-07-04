@@ -1,7 +1,3 @@
-#import sys
-#import re
-#import time
-#import click
 import os
 import json
 import sqlite3
@@ -10,6 +6,16 @@ import sqlite3
 # =========================================================
 #                  C S V   F U N C T I O N S
 # =========================================================
+def _process_csv_data_row(inRow, labels):
+    outRow = {}
+    numItems = min(len(inRow), len(labels))
+
+    for i in range(0, numItems):
+        outRow.update({labels[i]: inRow[i]})
+
+    return outRow
+
+
 def save_csv_data(dbFName, data, csvFmt=None, csvHdr=None):
     """Save data to CSV file.
     
@@ -33,7 +39,7 @@ def save_csv_data(dbFName, data, csvFmt=None, csvHdr=None):
         dbFile = open(dbFName, 'a+')
         if os.stat(dbFName).st_size == 0 and csvHdr is not None:
             dbFile.write(csvHdr())
-        
+
         for row in data:
             dbFile.write(csvFmt(row))
 
@@ -45,14 +51,13 @@ def save_csv_data(dbFName, data, csvFmt=None, csvHdr=None):
             dbFile.close()
     
 
-def get_csv_data(dbFName, numRecs=1, skipHdr=True):
+def get_csv_data(dbFName, numRecs=1, first=True):
     """Retrieve data from CSV file.
     
     Args:
         dbFName: CSV file name
         numRecs: Number of records to retrieve
-        skipHdr: If TRUE, assume first row is header and start reading next row as 1st data row
-        
+
     Raises:
         OSError: If unable to access or read data from CSV file.
     """
@@ -62,19 +67,14 @@ def get_csv_data(dbFName, numRecs=1, skipHdr=True):
     try:
         dbFile = open(dbFName, 'r')
         raw = dbFile.readline().rstrip('\n')
-
         if not raw:
             raise OSError("Empty data file")
 
-        if skipHdr:
-            numRecs += 1
-        else:    
-            data.append(raw.split(','))
-            
-        for i in range(1, numRecs):
+        labels = raw.split(',')
+        for i in range(0, numRecs):
             raw = dbFile.readline().rstrip('\n')
             if raw:
-                data.append(raw.split(','))
+                data.append(_process_csv_data_row(raw.split(','), labels))
             else:
                 break
 
@@ -85,27 +85,32 @@ def get_csv_data(dbFName, numRecs=1, skipHdr=True):
         if dbFile is not None:
             dbFile.close()
         
-    return data    
+    return data
 
     
 # =========================================================
 #                 J S O N   F U N C T I O N S
 # =========================================================
 def _read_json(dbFName):
+    dbFile = None
+
     try:
         dbFile = open(dbFName, "r")
         data = json.load(dbFile)
         
     except json.JSONDecodeError:    # We'll just 'overwrite' the file
-        return None                 #  if it's empty or if we can't read it.
+        return None                 # if it's empty or if we can't read it.
 
     finally:
-        dbFile.close()
+        if dbFile is not None:
+            dbFile.close()
         
     return data    
 
         
 def _write_json(dbFName, data):
+    dbFile = None
+
     try:
         dbFile = open(dbFName, "w")
         json.dump(data, dbFile)
@@ -114,7 +119,8 @@ def _write_json(dbFName, data):
         raise OSError("Failed to write data to '{}'! [Error: {}]".format(dbFName, e))
         
     finally:
-        dbFile.close()
+        if dbFile is not None:
+            dbFile.close()
     
     
 def save_json_data(dbFName, data):
@@ -139,7 +145,7 @@ def save_json_data(dbFName, data):
         raise OSError("Failed to access '{}'! [Error {}]".format(dbFName, e))
 
 
-def get_json_data(dbFName, numRecs=1):
+def get_json_data(dbFName, numRecs=1, first=True):
     """Retrieve data from CSV file.
 
     Args:
@@ -151,12 +157,13 @@ def get_json_data(dbFName, numRecs=1):
     """
     try:
         jsonData = _read_json(dbFName) if os.path.exists(dbFName) else None
-        print(len(jsonData))
+
+        data = jsonData[:min(len(jsonData), numRecs)] if jsonData is not None else []
 
     except OSError as e:
         raise OSError("Failed to read data from '{}'! [Error: {}]".format(dbFName, e))
 
-    return []
+    return data
 
 
 # =========================================================
@@ -168,7 +175,6 @@ def _connect_sqlite(dbFName):
         if not os.path.exists(path):
             os.makedirs(path)
     
-    dbConn = None
     try:
         dbConn = sqlite3.connect(dbFName)
         
@@ -202,7 +208,7 @@ def save_sqlite_data(dbFName, data):
     dbConn.close()
 
 
-def get_sqlite_data(dbFName, numRecs=1):
+def get_sqlite_data(dbFName, numRecs=1, first=True):
     return []
 
     

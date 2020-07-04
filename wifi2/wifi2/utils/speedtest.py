@@ -1,9 +1,6 @@
-import os
 import re
 import subprocess
 import time
-#import click
-#import sys
 
 from .datastore import save_csv_data, get_csv_data, save_json_data, get_json_data
 from .datastore import save_sqlite_data, get_sqlite_data, save_influx_data, get_influx_data
@@ -40,6 +37,7 @@ def run_speed_test(settings):
     response = proc.stdout.read()
     
     timeStamp = time.time()
+
     ping = re.findall('Ping:\s(.*?)\s', str(response), re.MULTILINE)
     download = re.findall('Download:\s(.*?)\s', str(response), re.MULTILINE)
     upload = re.findall('Upload:\s(.*?)\s', str(response), re.MULTILINE)
@@ -55,19 +53,25 @@ def run_speed_test(settings):
 # =========================================================
 #                D A T A   F U N C T I O N S
 # =========================================================
-def save_speed_data(settings, data, dataFmt=None, dataHdr=None):
+def save_speed_data(settings, data):
     """Save SpeedTest data to preferred data store as defined in application settings.
     
     Args:
-        settings: list with data store settings
-        dataFmt:  optional data row formatter callback function (e.g. to format CSV record string)
-        dataHdr:  potional data header row string (e.g. for CSV data/column headers)
-        
+        settings: Data store settings
+        data:     List with data rows
+
     Raises:
         OSError: If data store is not supported and/or cannot be accessed.
     """
+
+    def _csv_data_header():
+        return 'time,ping,download,upload\r\n'
+
+    def _csv_data_formatter(dataRow):
+        return '{},{},{},{}\r\n'.format(dataRow['time'], dataRow['ping'], dataRow['download'], dataRow['upload'])
+
     if settings['storage'].lower() == 'csv':
-        save_csv_data(settings['db'], data, dataFmt, dataHdr)
+        save_csv_data(settings['db'], data, _csv_data_formatter, _csv_data_header)
         
     elif settings['storage'].lower() == 'json':
         save_json_data(settings['db'], data)
@@ -82,12 +86,13 @@ def save_speed_data(settings, data, dataFmt=None, dataHdr=None):
         raise OSError("Data storage type '{}' is not supported!".format(str(settings['storage'])))
 
         
-def get_speed_data(settings, numRecs):
+def get_speed_data(settings, numRecs, first=True):
     """Retrieve SpeedTest data records from preferred data store as defined in application settings.
     
     Args:
         settings: List with data store settings
         numRecs:  Number of records to retrieve
+        first:    If TRUE, retrieve first 'numRec' records, else retrieve last 'numRec' records
     
     Returns:
         List of data records
@@ -96,16 +101,16 @@ def get_speed_data(settings, numRecs):
         OSError: If data store is not supported and/or cannot be accessed.
     """
     if settings['storage'].lower() == 'csv':
-        return get_csv_data(settings['db'], numRecs, True)
+        return get_csv_data(settings['db'], numRecs, first)
         
     elif settings['storage'].lower() == 'json':
-        return get_json_data(settings['db'], numRecs)
+        return get_json_data(settings['db'], numRecs, first)
         
     elif settings['storage'].lower() == 'sqlite':
-        return get_sqlite_data(settings['db'], numRecs)
+        return get_sqlite_data(settings['db'], numRecs, first)
         
     elif settings['storage'] == 'Influx':
-        return get_influx_data(settings['db'], settings['dbuser'], settings['dbpswd'], numRecs)
+        return get_influx_data(settings['db'], settings['dbuser'], settings['dbpswd'], numRecs, first)
         
     else:    
         raise OSError("Data storage type '{}' is not supported!".format(str(settings['storage'])))

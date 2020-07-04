@@ -3,7 +3,6 @@ import os
 import re
 import click
 import time
-#import png
 
 from pathlib import Path
 from .utils.settings import read_settings, save_settings, show_settings, isvalid_settings
@@ -12,6 +11,7 @@ from .utils.speedtest import run_speed_test, get_speed_data, save_speed_data
 
 APP_NAME = 'wifi2'
 APP_CONFIG = 'config.ini'
+APP_MIN_RUNS = 1
 APP_MAX_RUNS = 100
 APP_SLEEP = 60
 
@@ -38,13 +38,24 @@ class ApiKey(click.ParamType):
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
-def _data_formatter(data):
-    return (
-        time.strftime('%m/%d/%y %H:%M', time.localtime(data['time'])), 
-        data['ping'],
-        data['download'],
-        data['upload']
-    )
+def _data_formatter(data, rowNum=0, isRaw=False):
+    na = '- n/a -'
+    out = (str(rowNum),) if rowNum > 0 else tuple()
+
+    if isRaw:
+        return out + (
+            na if 'time' not in data else time.strftime('%m/%d/%y %H:%M', time.localtime(float(data['time']))),
+            na if 'ping' not in data else float(data['ping']),
+            na if 'download' not in data else float(data['download']),
+            na if 'upload' not in data else float(data['upload'])
+        )
+    else:
+        return out + (
+            na if len(data) < 1 else data[0],
+            na if len(data) < 2 else data[1],
+            na if len(data) < 3 else data[2],
+            na if len(data) < 4 else data[3],
+        )
 
 
 def current_weather(location, api_key='OWM_API_KEY'):
@@ -66,37 +77,55 @@ def current_weather(location, api_key='OWM_API_KEY'):
     return response.json()['weather'][0]['description']
 
 
-def show_speed_data(data, raw=False):
+def show_speed_data(data, isRaw=False):
     """Format and display SpeedTest data.
     
     Args:
         data: Individual data row/record as list.
-        raw:  If TRUE, data is is 'raw' format.
+        isRaw:  If TRUE, data is is 'raw' format.
     """
     template = "DATE: {}\nPING: {} ms\nDOWN: {} Mbit/s\nUP:   {} Mbit/s"
-    # @todo validate that we have enough data points in list
-    click.echo(template.format(*_data_formatter(data)) if raw else template.format(' '.join((data[0], data[1])), data[2], data[3], data[4]))
+    click.echo(template.format(*_data_formatter(data, isRaw)))
         
 
-def show_speed_data_table(data, raw=False):
+def show_speed_data_table(data, showRowNum=True, isRaw=False):
     """Format and display SpeedTest data.
     
     Args:
-        data: List of data rows/records if 'table' is TRUE. Else use individual data row/record.
-        raw:  If TRUE, data is is 'raw' format.
+        data:       List of data rows/records if 'table' is TRUE. Else use individual data row/record.
+        showRowNum: If TRUE, show row number in left-most column
+        isRaw:      If TRUE, data is is 'raw' format.
     """
-    
-    template = " {!s:18s} | {:8.3f} | {:8.2f} | {:8.2f} " if raw else " {:18s} | {:8s} | {:8s} | {:8s} "
+    if showRowNum:
+        #           |1234567890123456789012|1234567890|1234567890|1234567890|
+        #           |                      |          |          |          |
+        firstHdr  = "     |    Date/Time   |   PING   |   DOWN   |    UP    "
+        secondHdr = "  #  | MM/DD/YY HH:MM |    ms    |  MBit/s  |  MBit/s  "
+        divider   = "-----|----------------|----------|----------|----------"
+        firstCol  = " {:>3s} | {!s:14s} |" if isRaw else " {:>3s} : {:14s} |"
+    else:
+        #           |1234567890123456|1234567890|1234567890|1234567890|
+        #           |                |          |          |          |
+        firstHdr  = "    Date/Time   |   PING   |   DOWN   |    UP    "
+        secondHdr = " MM/DD/YY HH:MM |    ms    |  MBit/s  |  MBit/s  "
+        divider   = "----------------|----------|----------|----------"
+        firstCol = " {!s:14s} |" if isRaw else "    {:14s}    |"
+
+    otherCol = " {:8.3f} | {:8.2f} | {:8.2f} " if isRaw else " {:18s} | {:8s} | {:8s} | {:8s} "
+
+    template = firstCol + otherCol
+    rowNum = 0
 
     click.echo()
-    #          |12345678901234567890|1234567890|1234567890|1234567890|
-    #          |                    |          |          |          |
-    click.echo("      Date/Time     |   PING   |   DOWN   |    UP    ")
-    click.echo("--------------------|----------|----------|----------")
-    click.echo("   MM/DD/YY HH:MM   |    ms    |  MBit/s  |  MBit/s  ")
-    click.echo("--------------------|----------|----------|----------")
+    click.echo(firstHdr)
+    click.echo(divider)
+    click.echo(secondHdr)
+    click.echo(divider)
+
     for row in data:
-        click.echo(template.format(*_data_formatter(row)) if raw else template.format(' '.join((row[0], row[1])), row[2], row[3], row[4]))
+        if showRowNum:
+            rowNum += 1
+        click.echo(template.format(*_data_formatter(row, rowNum, isRaw)))
 
     click.echo()
 
@@ -115,7 +144,8 @@ def show_speed_data_table(data, raw=False):
 )
 @click.pass_context
 def main(ctx, config: str = ''):
-    """
+    """Check and log internet speed and related metrics for current connection.
+
     This tool can check and log the current internet speed of the WiFi network. It can
     also display WiFi access credentials in text and as a QR code.
     
@@ -227,32 +257,31 @@ def creds(ctx, how: str, filename: str = ''):
 )
 @click.option(
     '--count', 'numRun',
-    type=click.IntRange(1, APP_MAX_RUNS, clamp=True),
-    default=1, show_default=True,
-    help='Number (1-100) of tests to run in sequence.',
+    type=click.IntRange(APP_MIN_RUNS, APP_MAX_RUNS, clamp=True),
+    default=APP_MIN_RUNS, show_default=True,
+    help='Number ({:n}-{:n}) of tests to run in sequence.'.format(APP_MIN_RUNS, APP_MAX_RUNS),
 )
 @click.option(
     '--history',
     is_flag=True,
-    help="Show history of 'all' or given number (using 'count') of previously saved speed tests.",
+    help="Show history of given number (using 'count') of previously saved speed tests.",
+)
+@click.option(
+    '--first/--last', 'first',
+    default=True,
+    help="Show 'first' or 'last' 'count' number of previously saved speed tests.",
 )
 @click.pass_context
-def speedtest(ctx, display: str, save: bool, history: bool, numRun: int):
+def speedtest(ctx, display: str, save: bool, numRun: int, history: bool, first: bool):
+    """Get speed test data.
+
+    \b
+    Speed data samples are retrieved/stored as follows:
+        'time'      Unix timestamp
+        'ping'      Ping response time (ms)
+        'download'  Download speed (Mbit/s)
+        'upload'    Upload speed (Mbit/s)
     """
-    Get speed test data.
-    """
-    
-    def _csv_data_header():
-        return 'Date,Time,Ping (ms),Download (Mbit/s),Upload (Mbit/s)\r\n'
-    
-    def _csv_data_formatter(dataRow):
-        return '{},{},{},{},{}\r\n'.format(
-                time.strftime('%m/%d/%y', time.localtime(dataRow['time'])),
-                time.strftime('%H:%M', time.localtime(dataRow['time'])),
-                dataRow['ping'],
-                dataRow['download'],
-                dataRow['upload'])
-    
     ctx.obj['settings'] = read_settings(ctx.obj['globals'])
     if not isvalid_settings(ctx.obj['settings']):
         raise click.ClickException("Invalid and/or incomplete config info!")
@@ -260,8 +289,13 @@ def speedtest(ctx, display: str, save: bool, history: bool, numRun: int):
     # Only show historic data    
     if history:
         try:
-            show_speed_data_table(get_speed_data(ctx.obj['settings']['data'], numRun), raw=False)
-            
+            data = get_speed_data(ctx.obj['settings']['data'], numRun, first)
+
+            if len(data):
+                show_speed_data_table(data, showRowNum=True, isRaw=True)
+            else:
+                click.echo('-- No data records found! --')
+
         except OSError as e:     
             raise click.ClickException(e)
 
@@ -278,7 +312,7 @@ def speedtest(ctx, display: str, save: bool, history: bool, numRun: int):
 
             if display.lower() == 'stdout':
                 click.echo('-- Internet Speed Test {} of {} --'.format(str(i + 1), str(numRun)))
-                show_speed_data(data[i], raw=True)
+                show_speed_data(data[i], isRaw=True)
 
             elif display.lower() == 'epaper':
                 #
@@ -292,11 +326,8 @@ def speedtest(ctx, display: str, save: bool, history: bool, numRun: int):
 
         if save:
             try:
-                if ctx.obj['settings']['data']['storage'].lower() == 'csv':
-                    save_speed_data(ctx.obj['settings']['data'], data, _csv_data_formatter, _csv_data_header)
-                else:    
-                    save_speed_data(ctx.obj['settings']['data'], data)
-                
+                save_speed_data(ctx.obj['settings']['data'], data)
+
             except OSError as e:
                 raise click.ClickException(e)
 
