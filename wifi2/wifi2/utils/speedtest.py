@@ -5,6 +5,13 @@ import time
 from .datastore import save_csv_data, get_csv_data, save_json_data, get_json_data
 from .datastore import save_sqlite_data, get_sqlite_data, save_influx_data, get_influx_data
 
+_DB_TABLE_  = 'speedtest'
+_DB_ORDER_  = 'time'
+_DB_FLDS_   = ['time',  'ping',  'download', 'upload']
+_DB_SQLITE_ = ['real',  'real',  'real',     'real']
+_DB_INFLUX_ = ['real',  'real',  'real',     'real']
+_DB_TYPES_  = ['float', 'float', 'float',    'float']
+
 
 # =========================================================
 #          S P E E D T E S T   F U N C T I O N S
@@ -64,23 +71,33 @@ def save_speed_data(settings, data):
         OSError: If data store is not supported and/or cannot be accessed.
     """
 
-    def _csv_data_header():
-        return 'time,ping,download,upload\r\n'
-
-    def _csv_data_formatter(dataRow):
-        return '{},{},{},{}\r\n'.format(dataRow['time'], dataRow['ping'], dataRow['download'], dataRow['upload'])
-
     if settings['storage'].lower() == 'csv':
-        save_csv_data(settings['db'], data, _csv_data_formatter, _csv_data_header)
+        save_csv_data(
+            data,
+            settings['db'],
+            _DB_FLDS_
+        )
         
     elif settings['storage'].lower() == 'json':
-        save_json_data(settings['db'], data)
+        save_json_data(
+            data,
+            settings['db'],
+            _DB_FLDS_
+        )
         
     elif settings['storage'].lower() == 'sqlite':
-        save_sqlite_data(settings['db'], data)
+        save_sqlite_data(
+            data,
+            settings['db'],
+            _DB_FLDS_, _DB_SQLITE_, _DB_TABLE_
+        )
         
     elif settings['storage'] == 'Influx':
-        save_influx_data(settings['db'], settings['dbuser'], settings['dbpswd'], data)
+        save_influx_data(
+            data,
+            settings['db'], settings['dbuser'], settings['dbpswd'],
+            _DB_FLDS_, _DB_INFLUX_, _DB_TABLE_
+        )
         
     else:    
         raise OSError("Data storage type '{}' is not supported!".format(str(settings['storage'])))
@@ -101,16 +118,31 @@ def get_speed_data(settings, numRecs, first=True):
         OSError: If data store is not supported and/or cannot be accessed.
     """
     if settings['storage'].lower() == 'csv':
-        return get_csv_data(settings['db'], numRecs, first)
+        return get_csv_data(
+            settings['db'],
+            _DB_FLDS_,
+            numRecs, first
+        )
         
     elif settings['storage'].lower() == 'json':
-        return get_json_data(settings['db'], numRecs, first)
+        return get_json_data(
+            settings['db'],
+            _DB_FLDS_,
+            numRecs, first
+        )
         
     elif settings['storage'].lower() == 'sqlite':
-        return get_sqlite_data(settings['db'], numRecs, first)
+        return get_sqlite_data(
+            settings['db'],
+            _DB_FLDS_, _DB_ORDER_, _DB_TABLE_,
+            numRecs, first
+        )
         
     elif settings['storage'] == 'Influx':
-        return get_influx_data(settings['db'], settings['dbuser'], settings['dbpswd'], numRecs, first)
+        return get_influx_data(
+            settings['db'], settings['dbuser'], settings['dbpswd'],
+            numRecs, first
+        )
         
     else:    
         raise OSError("Data storage type '{}' is not supported!".format(str(settings['storage'])))

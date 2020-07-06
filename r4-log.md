@@ -71,3 +71,17 @@ Started on [Sunday June 14, 2020].
 
 ### R4D19 - 02JUL2020
 * More refactoring and cleanup.
+* Bug fixes.
+
+### R4D20 - 03JUL2020
+* More bug fixes.
+* Reworking SQLite db storage.
+
+### R4D21 - 04JUL2020
+* More bug fixes.
+* More refactoring.
+
+### R4D22 - 05JUL2020
+* Finally finished all data store functions except InfluxDB.
+* More refactoring for better and more flexible modules.
+

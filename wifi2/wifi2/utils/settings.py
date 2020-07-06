@@ -204,6 +204,7 @@ def read_settings(ctxGlobals):
     Raises:
         OSError:    If unable to read config file 
     """
+    
     if os.path.exists(ctxGlobals['configFName']):
         config = configparser.ConfigParser(allow_no_value=True)
         config.read(ctxGlobals['configFName'])
@@ -224,6 +225,7 @@ def save_settings(ctxGlobals, section):
         ValueError: If invalid section name.
         OSError:    If unable to read config file 
     """
+
     if not section.lower() in ['wifi', 'data', 'test', 'all']:
         raise ValueError("Invalid section '{}'".format(section))
 

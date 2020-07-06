@@ -85,7 +85,7 @@ def show_speed_data(data, isRaw=False):
         isRaw:  If TRUE, data is is 'raw' format.
     """
     template = "DATE: {}\nPING: {} ms\nDOWN: {} Mbit/s\nUP:   {} Mbit/s"
-    click.echo(template.format(*_data_formatter(data, isRaw)))
+    click.echo(template.format(*_data_formatter(data, 0, isRaw)))
         
 
 def show_speed_data_table(data, showRowNum=True, isRaw=False):
@@ -286,7 +286,7 @@ def speedtest(ctx, display: str, save: bool, numRun: int, history: bool, first: 
     if not isvalid_settings(ctx.obj['settings']):
         raise click.ClickException("Invalid and/or incomplete config info!")
 
-    # Only show historic data    
+    # Show historic data
     if history:
         try:
             data = get_speed_data(ctx.obj['settings']['data'], numRun, first)
