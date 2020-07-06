@@ -76,6 +76,7 @@ def _get_data_settings(ctxGlobals):
         )
     elif storage.lower() == _Influx_:
         db = click.prompt("Enter Influx database URI")
+        dbport = click.prompt("Enter database port", default='')
         dbuser = click.prompt("Enter database user name", default='')
         dbpswd = click.prompt("Enter database user password", default='', hide_input=True)
     else:
@@ -112,11 +113,16 @@ def _get_speedtest_settings(ctxGlobals):
         type=click.Path(),
         default=click.get_app_dir('speedtest-cli')
     )
+    dbTable = click.prompt(
+        "Enter name of database table (for SQLite and InfluxDB)",
+        default='SpeedTest'
+    )
     params = None
     settings = {
         'speedtest': {
             'URI': uri,
-            'params': params
+            'params': params,
+            'dbtable': dbTable
             }
         }
     
@@ -139,11 +145,16 @@ def _get_ntwktest_settings(ctxGlobals):
         type=click.Path(),
         default=click.get_app_dir('ntwktest-cli')
     )
+    dbTable = click.prompt(
+        "Enter name of database table (for SQLite and InfluxDB)",
+        default='SpeedTest'
+    )
     params = None
     settings = {
         'ntwktest': {
             'URI': uri,
-            'params': params
+            'params': params,
+            'dbtable': dbTable
             }
         }
     
@@ -281,21 +292,23 @@ def show_settings(ctxGlobals, section):
 
     if section in ['all', 'wifi']:
         click.echo("\n--- [wifi] --------------------")
-        click.echo("SSID:              {}".format(_get_option_val(settings, 'wifi', 'ssid')))
-        click.echo("Security:          {}".format(_get_option_val(settings, 'wifi', 'security')))
-        click.echo("Password:          {}".format(_get_option_val(settings, 'wifi', 'password')))
+        click.echo("SSID:               {}".format(_get_option_val(settings, 'wifi', 'ssid')))
+        click.echo("Security:           {}".format(_get_option_val(settings, 'wifi', 'security')))
+        click.echo("Password:           {}".format(_get_option_val(settings, 'wifi', 'password')))
 
     if section in ['all', 'data']:
         click.echo("\n--- [data] --------------------")
-        click.echo("Storage:           {}".format(_get_option_val(settings, 'data', 'storage')))
-        click.echo("Database (db):     {}".format(_get_option_val(settings, 'data', 'db')))
-        click.echo("DB User  (dbuser:  {}".format(_get_option_val(settings, 'data', 'dbuser')))
-        click.echo("DB Pswd  (dbpswd): {}".format(_get_option_val(settings, 'data', 'dbpswd')))
+        click.echo("Storage:            {}".format(_get_option_val(settings, 'data', 'storage')))
+        click.echo("Database (db):      {}".format(_get_option_val(settings, 'data', 'db')))
+        click.echo("DB User  (dbuser:   {}".format(_get_option_val(settings, 'data', 'dbuser')))
+        click.echo("DB Pswd  (dbpswd):  {}".format(_get_option_val(settings, 'data', 'dbpswd')))
 
     if section in ['all', 'test']:
         click.echo("\n--- [test] --------------------")
-        click.echo("SpeedTest CLI URI: {}".format(_get_option_val(settings, 'speedtest', 'uri')))
-        click.echo("NtwkTest CLI URI:  {}".format(_get_option_val(settings, 'ntwktest', 'uri')))
+        click.echo("SpeedTest CLI URI:  {}".format(_get_option_val(settings, 'speedtest', 'uri')))
+        click.echo("SpeedTest DB Table: {}".format(_get_option_val(settings, 'speedtest', 'dbtable')))
+        click.echo("NtwkTest CLI URI:   {}".format(_get_option_val(settings, 'ntwktest', 'uri')))
+        click.echo("NtwkTest DB Table:  {}".format(_get_option_val(settings, 'ntwktest', 'dbtable')))
 
     click.echo("\n-------------------------------")
     click.echo("CONFIG: '{}'\n".format(ctxGlobals['configFName']))

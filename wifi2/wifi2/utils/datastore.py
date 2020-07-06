@@ -1,6 +1,7 @@
 import os
 import json
 import sqlite3
+from influxdb import InfluxDBClient
 
 # import pprint
 # _PP_ = pprint.PrettyPrinter(indent=4)
@@ -341,7 +342,50 @@ def get_sqlite_data(dbFName, tblFlds, orderBy, tblName, numRecs=1, first=True):
 # =========================================================
 #             I N F L U X   F U N C T I O N S
 # =========================================================
-def save_influx_data(data, db, dbuser, dbpswd, tblFlds, fldTypes, tblName):
+def _connect_influx(db):
+    if not os.path.exists(dbFName):
+        path = os.path.dirname(os.path.abspath(dbFName))
+        if not os.path.exists(path):
+            os.makedirs(path)
+    
+    try:
+        dbConn = sqlite3.connect(dbFName)
+        
+    except sqlite3.Error as e:
+        raise OSError("Failed to connect to database '{}' [Error: {}]!".format(dbFName, e))
+    
+    return dbConn
+
+
+def _exist_influx_table(dbCur, tblName):
+    """Check if a table with a given name exists.
+
+    Note that SQLIte3 stores table names in the 'sqlite_master' table.
+
+    Args:
+        dbCur:   DB cursor for a given database connection
+        tblName: Table name to look for
+
+    Returns:
+        bool:    TRUE if table exists, Else FALSE.
+    """
+
+    dbCur.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='{}'".format(tblName))
+
+    return True if dbCur.fetchone()[0] == 1 else False
+
+
+def save_influx_data(data, dbhost, dbport, dbuser, dbpswd, tblFlds, fldTypes, tblName):
+    dbClient = _connect_influx(dbhost, dbport, dbuser, dbpswd)
+    
+    #if not _exist_sqlite_table(dbCur, tblName):
+    #    _create_sqlite_table(dbCur, tblName, dict(zip(tblFlds, fldTypes)))
+    #else:
+    #    for row in data:
+    #        _save_sqlite_data_row(dbCur, tblName, tblFlds, row)
+
+    #dbConn.commit()
+    #dbConn.close()
     print(data)
     print(tblFlds)
     print(fldTypes)
@@ -350,6 +394,18 @@ def save_influx_data(data, db, dbuser, dbpswd, tblFlds, fldTypes, tblName):
     
     
 def get_influx_data(db, dbuser, dbpswd, numRecs=1, first=True):
+    dbConn = _connect_sqlite(dbFName)
+    dbCur = dbConn.cursor()
+
+    dataRecords = _get_sqlite_data_rows(dbCur, tblName, tblFlds, orderBy, numRecs, first)
+    dbConn.close()
+
+    data = []
+    for row in dataRecords:
+        # This creates a dictionary with keys from field name list, mapped against vaues from database.
+        data.append(dict(zip(tblFlds, row)))
+
+    return data
     print(numRecs)
     print(first)
     print('-- RETRIEVING FROM INFLUX -- {}:{}:{}'.format(db, dbuser, dbpswd))
