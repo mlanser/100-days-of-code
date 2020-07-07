@@ -38,6 +38,25 @@ class ApiKey(click.ParamType):
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
+def current_weather(location, api_key='OWM_API_KEY'):
+    """-- DUMMY FUNCTION --
+    
+    Args:
+        location:  blah
+        api_key:   blah
+    """
+    url = 'https://api.openweathermap.org/data/2.5/weather'
+
+    query_params = {
+        'q': location,
+        'appid': api_key,
+    }
+
+    response = requests.get(url, params=query_params)
+
+    return response.json()['weather'][0]['description']
+
+
 def _data_formatter(data, rowNum=0, isRaw=False):
     na = '- n/a -'
     out = (str(rowNum),) if rowNum > 0 else tuple()
@@ -56,25 +75,6 @@ def _data_formatter(data, rowNum=0, isRaw=False):
             na if len(data) < 3 else data[2],
             na if len(data) < 4 else data[3],
         )
-
-
-def current_weather(location, api_key='OWM_API_KEY'):
-    """-- DUMMY FUNCTION --
-    
-    Args:
-        location:  blah
-        api_key:   blah
-    """
-    url = 'https://api.openweathermap.org/data/2.5/weather'
-
-    query_params = {
-        'q': location,
-        'appid': api_key,
-    }
-
-    response = requests.get(url, params=query_params)
-
-    return response.json()['weather'][0]['description']
 
 
 def show_speed_data(data, isRaw=False):

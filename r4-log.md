@@ -89,3 +89,6 @@ Started on [Sunday June 14, 2020].
 * Starting work on InfluxDB connector.
 * More refactoring to streamline data storage functions.
 * Extend app settings using config parser's Extended Interpolation feature.
+
+### R4D24 - 07JUL2020
+* More refactoring and cleanup.
