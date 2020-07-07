@@ -1,6 +1,6 @@
-import configparser
 import os
 import click
+from configparser import ConfigParser, ExtendedInterpolation
 
 _CSV_    = 'csv'
 _JSON_   = 'json'
@@ -217,7 +217,7 @@ def read_settings(ctxGlobals):
     """
     
     if os.path.exists(ctxGlobals['configFName']):
-        config = configparser.ConfigParser(allow_no_value=True)
+        config = configparser.ConfigParser(interpolation=ExtendedInterpolation(), allow_no_value=True)
         config.read(ctxGlobals['configFName'])
     else:
         raise OSError("Config file '{}' does NOT exist or cannot be accessed!".format(ctxGlobals['configFName']))
@@ -240,7 +240,7 @@ def save_settings(ctxGlobals, section):
     if not section.lower() in ['wifi', 'data', 'test', 'all']:
         raise ValueError("Invalid section '{}'".format(section))
 
-    config = configparser.ConfigParser(allow_no_value=True)
+    config = configparser.ConfigParser(interpolation=ExtendedInterpolation(), allow_no_value=True)
     if os.path.exists(ctxGlobals['configFName']):
         config.read(ctxGlobals['configFName'])
     else:
@@ -289,22 +289,52 @@ def show_settings(ctxGlobals, section):
         raise ValueError("Invalid section '{}'".format(section))
         
     settings = read_settings(ctxGlobals)
-
+    
     if section in ['all', 'wifi']:
+        # [wifi]
+        # ssid = <some SSID>
+        # security = WPA|WPA2|WEP|
+        # password = <some wifi password>
         click.echo("\n--- [wifi] --------------------")
         click.echo("SSID:               {}".format(_get_option_val(settings, 'wifi', 'ssid')))
         click.echo("Security:           {}".format(_get_option_val(settings, 'wifi', 'security')))
         click.echo("Password:           {}".format(_get_option_val(settings, 'wifi', 'password')))
 
     if section in ['all', 'data']:
+        # [data]
+        # datadir = ~/workspace/wifi2           <-- Custom variable created by user by manually editing config
+        # storage = CSV
+        # host = ${datadir}/_temp_wifi2.csv     <-- Using Interpolatoin to pre-parse config file. Variable created by user
+        # #storage = JSON
+        # #host = ${datadir}/_temp_wifi2.json
+        # #storage = SQLite
+        # #host = ${datadir}/_temp_wifi2.sqlite
+        # #storage = Influx
+        # #host = localhost
+        # port = 8086
+        # dbuser = root
+        # dbpswd = root
+        # dbtable = SpeedTest                    <-- Should this be in next section?
+        # dbname = SpeedTest
         click.echo("\n--- [data] --------------------")
-        click.echo("Storage:            {}".format(_get_option_val(settings, 'data', 'storage')))
+        click.echo("DB Storage Type:          {}".format(_get_option_val(settings, 'data', 'storage')))
+        click.echo("DB Host (server or file): {}".format(_get_option_val(settings, 'data', 'host')))
+        click.echo("DB Port #:                {}".format(_get_option_val(settings, 'data', 'port')))
+        click.echo("DB User  (dbuser:         {}".format(_get_option_val(settings, 'data', 'dbuser')))
+        click.echo("DB Pswd  (dbpswd):        {}".format(_get_option_val(settings, 'data', 'dbpswd')))
+        click.echo("DB Table (dbtable):       {}".format(_get_option_val(settings, 'data', 'dbtable')))
         click.echo("Database (db):      {}".format(_get_option_val(settings, 'data', 'db')))
-        click.echo("DB User  (dbuser:   {}".format(_get_option_val(settings, 'data', 'dbuser')))
-        click.echo("DB Pswd  (dbpswd):  {}".format(_get_option_val(settings, 'data', 'dbpswd')))
 
     if section in ['all', 'test']:
         click.echo("\n--- [test] --------------------")
+        # [speedtest]
+        # uri = /home/cabox/.config/speedtest-cli
+        # params
+        # dbtable = SpeedTest
+        # [ntwktest]
+        # uri = /home/cabox/.config/ntwktest-cli
+        # params
+        # dbtable = NtwkTest
         click.echo("SpeedTest CLI URI:  {}".format(_get_option_val(settings, 'speedtest', 'uri')))
         click.echo("SpeedTest DB Table: {}".format(_get_option_val(settings, 'speedtest', 'dbtable')))
         click.echo("NtwkTest CLI URI:   {}".format(_get_option_val(settings, 'ntwktest', 'uri')))
