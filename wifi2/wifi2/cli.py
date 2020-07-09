@@ -13,6 +13,7 @@ APP_NAME = 'wifi2'
 APP_CONFIG = 'config.ini'
 APP_MIN_RUNS = 1
 APP_MAX_RUNS = 100
+APP_HISTORY = 1000
 APP_SLEEP = 60
 
 
@@ -156,6 +157,10 @@ def main(ctx, config: str = ''):
         'globals': {
             'appName': APP_NAME,
             'configFName': os.path.expanduser(config),
+            'appMinRuns': APP_MIN_RUNS,
+            'appMaxRuns': APP_MAX_RUNS,
+            'appHistory': APP_HISTORY,
+            'appSleep': APP_SLEEP,
         }
     }
     
@@ -256,10 +261,9 @@ def creds(ctx, how: str, filename: str = ''):
     help='Save speed test data to data storage.',
 )
 @click.option(
-    '--count', 'numRun',
-    type=click.IntRange(APP_MIN_RUNS, APP_MAX_RUNS, clamp=True),
-    default=APP_MIN_RUNS, show_default=True,
-    help='Number ({:n}-{:n}) of tests to run in sequence.'.format(APP_MIN_RUNS, APP_MAX_RUNS),
+    '--count', 'cntr',
+    default=1, show_default=True,
+    help='Number of tests to run in sequence, or records to retrieve for review.',
 )
 @click.option(
     '--history',
@@ -272,7 +276,7 @@ def creds(ctx, how: str, filename: str = ''):
     help="Show 'first' or 'last' 'count' number of previously saved speed tests.",
 )
 @click.pass_context
-def speedtest(ctx, display: str, save: bool, numRun: int, history: bool, first: bool):
+def speedtest(ctx, display: str, save: bool, cntr: int, history: bool, first: bool):
     """Get speed test data.
 
     \b
@@ -288,8 +292,16 @@ def speedtest(ctx, display: str, save: bool, numRun: int, history: bool, first: 
 
     # Show historic data
     if history:
+        if cntr < 1 or cntr > ctx.obj['globals']['appHistory']:
+            count = click.prompt(
+                "Enter number of data records to retrieve:",
+                type=click.IntRange(1, ctx.obj['globals']['appHistory'], clamp=True),
+                default=1,
+                show_default=True,
+            )
+            
         try:
-            data = get_speed_data(ctx.obj['settings']['data'], numRun, first)
+            data = get_speed_data(ctx.obj['settings']['speedtest'], cntr, first)
 
             if len(data):
                 show_speed_data_table(data, showRowNum=True, isRaw=True)
@@ -301,9 +313,16 @@ def speedtest(ctx, display: str, save: bool, numRun: int, history: bool, first: 
 
     # Collect new data
     else:
-        data = []
+        if cntr <  ctx.obj['globals']['appMinRuns'] or cntr > ctx.obj['globals']['appMaxRuns']:
+            count = click.prompt(
+                "Enter number of test cycle runs:",
+                type=click.IntRange(ctx.obj['globals']['appMinRuns'], ctx.obj['globals']['appMaxRuns'], clamp=True),
+                default=ctx.obj['globals']['appMinRuns'],
+                show_default=True,
+            )
 
-        for i in range(0, numRun):
+        data = []
+        for i in range(0, cntr):
             try:
                 data.append(run_speed_test(ctx.obj['settings']['speedtest']))
             
@@ -311,7 +330,7 @@ def speedtest(ctx, display: str, save: bool, numRun: int, history: bool, first: 
                 raise click.ClickException(e)
 
             if display.lower() == 'stdout':
-                click.echo('-- Internet Speed Test {} of {} --'.format(str(i + 1), str(numRun)))
+                click.echo('-- Internet Speed Test {} of {} --'.format(str(i + 1), str(cntr)))
                 show_speed_data(data[i], isRaw=True)
 
             elif display.lower() == 'epaper':
@@ -321,12 +340,12 @@ def speedtest(ctx, display: str, save: bool, numRun: int, history: bool, first: 
                 #
                 #
 
-            if (i + 1) < numRun:
+            if (i + 1) < cntr:
                 time.sleep(APP_SLEEP)
 
         if save:
             try:
-                save_speed_data(ctx.obj['settings']['data'], data)
+                save_speed_data(ctx.obj['settings']['speedtest'], data)
 
             except OSError as e:
                 raise click.ClickException(e)

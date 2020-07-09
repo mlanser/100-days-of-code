@@ -92,3 +92,6 @@ Started on [Sunday June 14, 2020].
 
 ### R4D24 - 07JUL2020
 * More refactoring and cleanup.
+
+### R4D25 - 08JUL2020
+* More refactoring and cleanup.

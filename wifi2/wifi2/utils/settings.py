@@ -1,11 +1,15 @@
 import os
 import click
-from configparser import ConfigParser, ExtendedInterpolation
+import configparser
+#from configparser import ConfigParser, ExtendedInterpolation, InterpolationMissingOptionError
 
 _CSV_    = 'csv'
 _JSON_   = 'json'
 _SQLite_ = 'sqlite'
 _Influx_ = 'influx'
+
+import pprint
+_PP_ = pprint.PrettyPrinter(indent=4)
 
 
 # =========================================================
@@ -40,8 +44,8 @@ def _get_wifi_settings(ctxGlobals):
 
 def _validate_wifi_settings(settings):
     #
-    # We can only verify taht values are stored in 
-    # config, but not that the values are correct.
+    # @NOTE - we can only verify that values are stored
+    #         in config, but not that they're correct.
     #
     if not settings.has_option('wifi', 'ssid'): 
         return False
@@ -59,30 +63,30 @@ def _validate_wifi_settings(settings):
 #
 # [data]
 # datadir = <common folder for data files>  - e.g. ~/wifi2/data
-# count = [1-100]                           - num rec's to retrieve
+# history = [1-100]                         - default num rec's to retrieve
 # sort = [first|last]                       - retrieve first or last 'count' items
 #
 def _get_data_settings(ctxGlobals):
     datadir = click.prompt(
         "Enter path to common/default data folder",
         type=click.Path(),
-        default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'data'),
+        default='',
     )
     count = click.prompt(
         "Enter default for number of data records to retrieve:",
-        type=click.IntRange(APP_MIN_RUNS, APP_MAX_RUNS, clamp=True),
-        default=APP_MIN_RUNS,
+        type=click.IntRange(1, ctxGlobals['appHistory'], clamp=True),
+        default=1,
         show_default=True,
     )
     sort = click.prompt(
         "Select default history list/sort order", 
-        type=click.Choice(['first', 'last'], case_sensitive=False)
+        type=click.Choice(['first', 'last'], case_sensitive=False),
         default='first',
     )
     settings = {
         'data': {
             'datadir': datadir,
-            'count': count,
+            'history': history,
             'sort': sort.lower(),
             }
         }
@@ -92,9 +96,9 @@ def _get_data_settings(ctxGlobals):
 
 def _validate_data_settings(settings):
     # 
-    # There are no required items in this section 
-    # and we're only keeping this function to be 
-    # consistent with other config sections.
+    # @NOTE - there are no required items in this section 
+    #         and we're only keeping this function to be 
+    #         consistent with other config sections.
     # 
     return True
 
@@ -107,6 +111,7 @@ def _validate_data_settings(settings):
 # uri = <uri/path to test tool>
 # params = <any test tool params>
 # count = [1-100]                       - num test cycle runs
+# sleep = [1-60]                        - seconds between each test run
 #
 # storage = CSV|JSON|SQLite|Influx      - data storage type
 # host = <hostname or file path>        - data storage host. If file-based (i.e. CSV, JSON, SQLite),
@@ -137,8 +142,14 @@ def _get_speedtest_settings(ctxGlobals):
     params  = None
     count = click.prompt(
         "Enter default for number of test cycle runs:",
-        type=click.IntRange(APP_MIN_RUNS, APP_MAX_RUNS, clamp=True),
-        default=APP_MIN_RUNS,
+        type=click.IntRange(ctxGlobals['appMinRuns'], ctxGlobals['appMaxRuns'], clamp=True),
+        default=ctxGlobals['appMinRuns'],
+        show_default=True,
+    )
+    sleep = click.prompt(
+        "Enter wait time (in seconds) between test cycle runs:",
+        type=click.IntRange(1, 60, clamp=True),
+        default=60,
         show_default=True,
     )
     
@@ -189,6 +200,7 @@ def _get_speedtest_settings(ctxGlobals):
             'URI': uri,
             'params': params,
             'count': count,
+            'sleep': sleep,
             'host': host,
             'port': port,
             'dbuser': dbuser, # @TODO NEEDS TO BE LOW-LEVEL USER ACCT
@@ -204,7 +216,10 @@ def _get_speedtest_settings(ctxGlobals):
 
 
 def _validate_speedtest_settings(settings):
-    # @TODO: Need to add actual data validation logic here
+    #
+    # @NOTE - we can only verify that values are stored
+    #         in config, but not that they're correct.
+    #
     if not settings.has_option('speedtest', 'uri'):
         return False
 
@@ -219,6 +234,7 @@ def _validate_speedtest_settings(settings):
 # uri = <uri/path to test tool>
 # params = <any test tool params>
 # count = [1-100]                       - num test cycle runs
+# sleep = [1-60]                        - seconds between each test run
 #
 # storage = CSV|JSON|SQLite|Influx      - data storage type
 # host = <hostname or file path>        - data storage host. If file-based (i.e. CSV, JSON, SQLite),
@@ -234,17 +250,31 @@ def _validate_speedtest_settings(settings):
 # dbname = <db name>                    - Used for InfluxDB
 # dbtable = <db table name>             - Used for SQLite and Influx
 #
+# --
+#            'appName': APP_NAME,
+#            'configFName': os.path.expanduser(config),
+#            'appMinRuns': APP_MIN_RUNS,
+#            'appMaxRuns': APP_MAX_RUNS,
+#            'appHistory': APP_HISTORY,
+#            'appSleep': APP_SLEEP,
+# --                
 def _get_sometest_settings(ctxGlobals):
     uri = click.prompt(
         "Enter URI for 'sometest-cli'",
         type=click.Path(),
         default=click.get_app_dir('sometest-cli')
     )
-    params = None
+    params  = None
     count = click.prompt(
         "Enter default for number of test cycle runs:",
-        type=click.IntRange(APP_MIN_RUNS, APP_MAX_RUNS, clamp=True),
-        default=APP_MIN_RUNS,
+        type=click.IntRange(ctxGlobals['appMinRuns'], ctxGlobals['appMaxRuns'], clamp=True),
+        default=ctxGlobals['appMinRuns'],
+        show_default=True,
+    )
+    sleep = click.prompt(
+        "Enter wait time (in seconds) between test cycle runs:",
+        type=click.IntRange(1, 60, clamp=True),
+        default=60,
         show_default=True,
     )
     
@@ -252,7 +282,8 @@ def _get_sometest_settings(ctxGlobals):
         'sometest': {
             'URI': uri,
             'params': params,
-            'count': count
+            'count': count,
+            'sleep': sleep,
             }
         }
     
@@ -262,7 +293,10 @@ def _get_sometest_settings(ctxGlobals):
 
 
 def _validate_sometest_settings(settings):
-    # @TODO: Need to add actual data validation logic here
+    #
+    # @NOTE - we can only verify that values are stored
+    #         in config, but not that they're correct.
+    #
     #if not settings.has_option('ntwktest', 'uri'):
     #    return False
 
@@ -315,8 +349,11 @@ def read_settings(ctxGlobals):
     """
     
     if os.path.exists(ctxGlobals['configFName']):
-        config = configparser.ConfigParser(interpolation=ExtendedInterpolation(), allow_no_value=True)
-        config.read(ctxGlobals['configFName'])
+        try:
+            config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation(), allow_no_value=True)
+            config.read(ctxGlobals['configFName'])
+        except configparser.Error as e:
+            raise ValueError("Invalid configuration settings!\n{}".format(e))
     else:
         raise OSError("Config file '{}' does NOT exist or cannot be accessed!".format(ctxGlobals['configFName']))
 
@@ -338,7 +375,7 @@ def save_settings(ctxGlobals, section):
     if not section.lower() in ['wifi', 'data', 'test', 'all']:
         raise ValueError("Invalid section '{}'".format(section))
 
-    config = configparser.ConfigParser(interpolation=ExtendedInterpolation(), allow_no_value=True)
+    config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation(), allow_no_value=True)
     if os.path.exists(ctxGlobals['configFName']):
         config.read(ctxGlobals['configFName'])
     else:
@@ -378,8 +415,11 @@ def show_settings(ctxGlobals, section):
         outStr = '- n/a -'
 
         if _section is not None and _option is not None:
-            if _settings.has_option(_section, _option):
-                outStr = str(_settings[_section][_option])
+            try:
+                if _settings.has_option(_section, _option):
+                    outStr = str(_settings[_section][_option])
+            except configparser.Error:
+                outStr = '- Invalid setting! -'
 
         return outStr
 
@@ -389,10 +429,12 @@ def show_settings(ctxGlobals, section):
     settings = read_settings(ctxGlobals)
     
     if section in ['all', 'wifi']:
+        #
         # [wifi]
         # ssid = <some SSID>
-        # security = WPA|WPA2|WEP|
+        # security = WPA|WPA2|WEP
         # password = <some wifi password>
+        #
         click.echo("\n--- [wifi] --------------------")
         click.echo("SSID:               {}".format(_get_option_val(settings, 'wifi', 'ssid')))
         click.echo("Security:           {}".format(_get_option_val(settings, 'wifi', 'security')))
@@ -400,43 +442,53 @@ def show_settings(ctxGlobals, section):
 
     if section in ['all', 'data']:
         # [data]
-        # datadir = ~/workspace/wifi2           <-- Custom variable created by user by manually editing config
-        # storage = CSV
-        # host = ${datadir}/_temp_wifi2.csv     <-- Using Interpolatoin to pre-parse config file. Variable created by user
-        # #storage = JSON
-        # #host = ${datadir}/_temp_wifi2.json
-        # #storage = SQLite
-        # #host = ${datadir}/_temp_wifi2.sqlite
-        # #storage = Influx
-        # #host = localhost
-        # port = 8086
-        # dbuser = root
-        # dbpswd = root
-        # dbtable = SpeedTest                    <-- Should this be in next section?
-        # dbname = SpeedTest
+        # datadir = <common folder for data files>  - e.g. ~/wifi2/data
+        # history = [1-100]                         - default num rec's to retrieve
+        # sort = [first|last]                       - retrieve first or last 'count' items
+        #
         click.echo("\n--- [data] --------------------")
-        click.echo("DB Storage Type:          {}".format(_get_option_val(settings, 'data', 'storage')))
-        click.echo("DB Host (server or file): {}".format(_get_option_val(settings, 'data', 'host')))
-        click.echo("DB Port #:                {}".format(_get_option_val(settings, 'data', 'port')))
-        click.echo("DB User  (dbuser:         {}".format(_get_option_val(settings, 'data', 'dbuser')))
-        click.echo("DB Pswd  (dbpswd):        {}".format(_get_option_val(settings, 'data', 'dbpswd')))
-        click.echo("DB Table (dbtable):       {}".format(_get_option_val(settings, 'data', 'dbtable')))
-        click.echo("Database (db):      {}".format(_get_option_val(settings, 'data', 'db')))
+        click.echo("Common Data Dir:    {}".format(_get_option_val(settings, 'data', 'datadir')))
+        click.echo("Default History:    {}".format(_get_option_val(settings, 'data', 'history')))
+        click.echo("Default Sort:       {}".format(_get_option_val(settings, 'data', 'sort')))
 
     if section in ['all', 'test']:
         click.echo("\n--- [test] --------------------")
-        # [speedtest]
-        # uri = /home/cabox/.config/speedtest-cli
-        # params
-        # dbtable = SpeedTest
-        # [ntwktest]
-        # uri = /home/cabox/.config/ntwktest-cli
-        # params
-        # dbtable = NtwkTest
-        click.echo("SpeedTest CLI URI:  {}".format(_get_option_val(settings, 'speedtest', 'uri')))
-        click.echo("SpeedTest DB Table: {}".format(_get_option_val(settings, 'speedtest', 'dbtable')))
-        click.echo("NtwkTest CLI URI:   {}".format(_get_option_val(settings, 'ntwktest', 'uri')))
-        click.echo("NtwkTest DB Table:  {}".format(_get_option_val(settings, 'ntwktest', 'dbtable')))
+        # [<nameof test tool section>]
+        # uri = <uri/path to test tool>
+        # params = <any test tool params>
+        # count = [1-100]                       - num test cycle runs
+        # sleep = [1-60]                        - seconds between each test run
+        #
+        # storage = CSV|JSON|SQLite|Influx      - data storage type
+        # host = <hostname or file path>        - data storage host. If file-based (i.e. CSV, JSON, SQLite),
+        #                                         then this is a path/filename)
+        #   Ex:     ~/speedtest.csv
+        #           ~/speedtest.json
+        #           ~/wifi2.sqlite              - SQLite file can hold several tables
+        #           localhost                   - Influx db server can hold several databases
+        #
+        # port = <db server port>               - Used for InfluxDB
+        # dbuser = <db user w proper access>    - Used for InfluxDB
+        # dbpswd = <db user password>           - Used for InfluxDB
+        # dbname = <db name>                    - Used for InfluxDB
+        # dbtable = <db table name>             - Used for SQLite and Influx
+        #
+        click.echo("SpeedTest Settings")
+        click.echo("  CLI URI:          {}".format(_get_option_val(settings, 'speedtest', 'uri')))
+        click.echo("  CLI params:       {}".format(_get_option_val(settings, 'speedtest', 'params')))
+        click.echo("  Test Run Count:   {}".format(_get_option_val(settings, 'speedtest', 'count')))
+        click.echo("  Wait Time:        {}".format(_get_option_val(settings, 'speedtest', 'sleep')))
+        click.echo("  DB Storage Type:  {}".format(_get_option_val(settings, 'speedtest', 'storage')))
+        click.echo("  DB Host:          {}".format(_get_option_val(settings, 'speedtest', 'host')))
+        click.echo("  DB Port #:        {}".format(_get_option_val(settings, 'speedtest', 'port')))
+        click.echo("  DB User:          {}".format(_get_option_val(settings, 'speedtest', 'dbuser')))
+        click.echo("  DB User Password: {}".format(_get_option_val(settings, 'speedtest', 'dbpswd')))
+        click.echo("  DB Name:          {}".format(_get_option_val(settings, 'speedtest', 'dbname')))
+        click.echo("  DB Table:         {}".format(_get_option_val(settings, 'speedtest', 'dbtable')))
+        
+        click.echo("\nSome Other Test Settings")
+        click.echo("  CLI URI:          {}".format(_get_option_val(settings, 'speedtest', 'uri')))
+        click.echo("  CLI params:       {}".format(_get_option_val(settings, 'speedtest', 'params')))
 
     click.echo("\n-------------------------------")
     click.echo("CONFIG: '{}'\n".format(ctxGlobals['configFName']))

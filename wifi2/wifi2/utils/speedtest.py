@@ -39,7 +39,7 @@ def run_speed_test(settings):
 
     proc.wait() 
     if proc.returncode != 0:
-        raise OSError("Failed to run and/or missing 'speedtest-cli' utility! [Code: {}]".format(str(proc.returncode)))
+        raise OSError("Failed to run and/or missing 'speedtest-cli' utility!\n[Code: {}]".format(str(proc.returncode)))
         
     response = proc.stdout.read()
     
@@ -74,29 +74,31 @@ def save_speed_data(settings, data):
     if settings['storage'].lower() == 'csv':
         save_csv_data(
             data,
-            settings['db'],
+            settings['host'],
             _DB_FLDS_
         )
         
     elif settings['storage'].lower() == 'json':
         save_json_data(
             data,
-            settings['db'],
+            settings['host'],
             _DB_FLDS_
         )
         
     elif settings['storage'].lower() == 'sqlite':
         save_sqlite_data(
             data,
-            settings['db'],
-            _DB_FLDS_, _DB_SQLITE_, _DB_TABLE_
+            settings['host'],
+            _DB_FLDS_, _DB_SQLITE_, settings['dbtable'],
         )
         
     elif settings['storage'] == 'Influx':
         save_influx_data(
             data,
-            settings['db'], settings['dbuser'], settings['dbpswd'],
-            _DB_FLDS_, _DB_INFLUX_, _DB_TABLE_
+            settings['host'], settings['port'],
+            settings['dbname'], settings['dbtable'],
+            settings['dbuser'], settings['dbpswd'],
+            _DB_FLDS_, _DB_INFLUX_
         )
         
     else:    
@@ -119,28 +121,30 @@ def get_speed_data(settings, numRecs, first=True):
     """
     if settings['storage'].lower() == 'csv':
         return get_csv_data(
-            settings['db'],
+            settings['host'],
             _DB_FLDS_,
             numRecs, first
         )
         
     elif settings['storage'].lower() == 'json':
         return get_json_data(
-            settings['db'],
+            settings['host'],
             _DB_FLDS_,
             numRecs, first
         )
         
     elif settings['storage'].lower() == 'sqlite':
         return get_sqlite_data(
-            settings['db'],
-            _DB_FLDS_, _DB_ORDER_, _DB_TABLE_,
+            settings['host'],
+            _DB_FLDS_, _DB_ORDER_, settings['dbtable'],
             numRecs, first
         )
         
     elif settings['storage'] == 'Influx':
         return get_influx_data(
-            settings['db'], settings['dbuser'], settings['dbpswd'],
+            settings['host'], settings['port'],
+            settings['dbname'], settings['dbtable'],
+            settings['dbuser'], settings['dbpswd'],
             numRecs, first
         )
         

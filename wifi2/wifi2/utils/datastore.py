@@ -3,8 +3,8 @@ import json
 import sqlite3
 from influxdb import InfluxDBClient
 
-# import pprint
-# _PP_ = pprint.PrettyPrinter(indent=4)
+import pprint
+_PP_ = pprint.PrettyPrinter(indent=4)
 
 
 # =========================================================
@@ -41,7 +41,7 @@ def _count_csv_recs(dbFName):
         dbFile = open(dbFName, 'r')
 
     except OSError as e:
-        raise OSError("Failed to read '{}'! -- {}".format(dbFName, e))
+        raise OSError("Failed to read '{}'!\n{}".format(dbFName, e))
 
     else:
         with dbFile:
@@ -79,7 +79,7 @@ def save_csv_data(data, dbFName, dbFlds):
         dbFile = open(dbFName, 'a+')
 
     except OSError as e:
-        raise OSError("Failed to save data to '{}'! - {}".format(dbFName, e))
+        raise OSError("Failed to save data to '{}'!\n{}".format(dbFName, e))
 
     else:
         if os.stat(dbFName).st_size == 0:
@@ -124,7 +124,7 @@ def get_csv_data(dbFName, dbFlds, numRecs=1, first=True):
                 break
 
     except OSError as e:
-        raise OSError("Failed to read data from '{}'! -- {}".format(dbFName, e))
+        raise OSError("Failed to read data from '{}'!\n{}".format(dbFName, e))
 
     else:
         dbFile.close()
@@ -154,7 +154,7 @@ def _write_json(dbFName, data):
         json.dump(data, dbFile)
         
     except OSError as e:
-        raise OSError("Failed to write data to '{}'! -- {}".format(dbFName, e))
+        raise OSError("Failed to write data to '{}'!\n{}".format(dbFName, e))
         
     else:
         dbFile.close()
@@ -183,7 +183,7 @@ def save_json_data(data, dbFName, dbFlds):
         _write_json(dbFName, newData if oldData is None else oldData + newData)
 
     except OSError as e:
-        raise OSError("Failed to access '{}'! [Error {}]".format(dbFName, e))
+        raise OSError("Failed to access '{}'!\n{}".format(dbFName, e))
 
 
 def get_json_data(dbFName, dbFlds, numRecs=1, first=True):
@@ -210,7 +210,7 @@ def get_json_data(dbFName, dbFlds, numRecs=1, first=True):
             data = _process_data(jsonData[firstRec:lastRec], dbFlds)
 
     except OSError as e:
-        raise OSError("Failed to read data from '{}'! [Error: {}]".format(dbFName, e))
+        raise OSError("Failed to read data from '{}'!\n{}".format(dbFName, e))
 
     return data
 
@@ -228,7 +228,7 @@ def _connect_sqlite(dbFName):
         dbConn = sqlite3.connect(dbFName)
         
     except sqlite3.Error as e:
-        raise OSError("Failed to connect to database '{}' [Error: {}]!".format(dbFName, e))
+        raise OSError("Failed to connect to database '{}'\n{}!".format(dbFName, e))
     
     return dbConn
 
@@ -282,6 +282,8 @@ def _save_sqlite_data_row(dbCur, tblName, fldNames, dataRow):
     vals = ','.join("?" for (_) in fldNames)
 
     # Using list comprehension to only pull values that we want/need from data row
+    #_PP_.pprint("INSERT INTO {}({}) VALUES({})".format(tblName, flds, vals))
+    #_PP_.pprint(dataRow)
     dbCur.execute("INSERT INTO {}({}) VALUES({})".format(tblName, flds, vals),
                   [dataRow[key] for key in fldNames])
     
@@ -307,7 +309,11 @@ def _get_sqlite_data_rows(dbCur, tblName, fldNames, orderBy=None, numRecs=1, fir
     sort = (fldNames[0] if orderBy is None else orderBy) + ('' if first else ' DESC')
     dbCur.execute("SELECT {} FROM {} ORDER BY {} LIMIT {}".format(flds, tblName, sort, numRecs))
 
+    #recs = dbCur.fetchall()
+    #_PP_.pprint("SELECT {} FROM {} ORDER BY {} LIMIT {}".format(flds, tblName, sort, numRecs))
+    #_PP_.pprint(recs)
     return dbCur.fetchall()
+    #return recs
 
 
 def save_sqlite_data(data, dbFName, tblFlds, fldTypes, tblName):
@@ -316,9 +322,9 @@ def save_sqlite_data(data, dbFName, tblFlds, fldTypes, tblName):
 
     if not _exist_sqlite_table(dbCur, tblName):
         _create_sqlite_table(dbCur, tblName, dict(zip(tblFlds, fldTypes)))
-    else:
-        for row in data:
-            _save_sqlite_data_row(dbCur, tblName, tblFlds, row)
+        
+    for row in data:
+        _save_sqlite_data_row(dbCur, tblName, tblFlds, row)
 
     dbConn.commit()
     dbConn.close()
@@ -352,7 +358,7 @@ def _connect_influx(db):
         dbConn = sqlite3.connect(dbFName)
         
     except sqlite3.Error as e:
-        raise OSError("Failed to connect to database '{}' [Error: {}]!".format(dbFName, e))
+        raise OSError("Failed to connect to database '{}'\n{}!".format(dbFName, e))
     
     return dbConn
 
