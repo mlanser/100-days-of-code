@@ -95,3 +95,10 @@ Started on [Sunday June 14, 2020].
 
 ### R4D25 - 08JUL2020
 * More refactoring and cleanup.
+
+### R4D26 - 09JUL2020
+* Working on integrating InfluxDB support.
+
+### R4D26 - 09JUL2020
+* Still working on integrating InfluxDB support.
+* Reworking how we save time stamps.

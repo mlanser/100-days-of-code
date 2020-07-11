@@ -2,7 +2,8 @@ import requests
 import os
 import re
 import click
-import time
+from datetime import datetime
+from dateutil import tz
 
 from pathlib import Path
 from .utils.settings import read_settings, save_settings, show_settings, isvalid_settings
@@ -15,6 +16,9 @@ APP_MIN_RUNS = 1
 APP_MAX_RUNS = 100
 APP_HISTORY = 1000
 APP_SLEEP = 60
+
+import pprint
+_PP_ = pprint.PrettyPrinter(indent=4)
 
 
 # =========================================================
@@ -61,10 +65,11 @@ def current_weather(location, api_key='OWM_API_KEY'):
 def _data_formatter(data, rowNum=0, isRaw=False):
     na = '- n/a -'
     out = (str(rowNum),) if rowNum > 0 else tuple()
+    _PP_.pprint(data)
 
     if isRaw:
         return out + (
-            na if 'time' not in data else time.strftime('%m/%d/%y %H:%M', time.localtime(float(data['time']))),
+            na if 'timestamp' not in data else datetime.fromisoformat(data['timestamp']).strftime('%m/%d/%y %H:%M'),
             na if 'ping' not in data else float(data['ping']),
             na if 'download' not in data else float(data['download']),
             na if 'upload' not in data else float(data['upload'])

@@ -1,6 +1,8 @@
 import re
 import subprocess
-import time
+
+from datetime import tzinfo, timezone, datetime
+from dateutil import tz
 
 from .datastore import save_csv_data, get_csv_data, save_json_data, get_json_data
 from .datastore import save_sqlite_data, get_sqlite_data, save_influx_data, get_influx_data
@@ -11,6 +13,11 @@ _DB_FLDS_   = ['time',  'ping',  'download', 'upload']
 _DB_SQLITE_ = ['real',  'real',  'real',     'real']
 _DB_INFLUX_ = ['real',  'real',  'real',     'real']
 _DB_TYPES_  = ['float', 'float', 'float',    'float']
+
+_FMT_ISO_   = "%Y-%m-%dT%H:%M:%SZ"
+
+import pprint
+_PP_ = pprint.PrettyPrinter(indent=4)
 
 
 # =========================================================
@@ -43,14 +50,17 @@ def run_speed_test(settings):
         
     response = proc.stdout.read()
     
-    timeStamp = time.time()
-
+    timestamp = datetime.now(timezone.utc).isoformat()
     ping = re.findall('Ping:\s(.*?)\s', str(response), re.MULTILINE)
     download = re.findall('Download:\s(.*?)\s', str(response), re.MULTILINE)
     upload = re.findall('Upload:\s(.*?)\s', str(response), re.MULTILINE)
+    location = 'Some Location name'
+    locationTZ = tz.gettz() #timezone ref TZ at location - timestamps are stored in UTC
 
     return {
-        'time': timeStamp,
+        'timestamp': timestamp,
+        'locationTZ': locationTZ,
+        'location': location,
         'ping': ping[0].replace(',', '.'),
         'download': download[0].replace(',', '.'),
         'upload': upload[0].replace(',', '.'),
