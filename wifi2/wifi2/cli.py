@@ -110,11 +110,12 @@ def show_speed_data(data, isRaw=False, rateUnit=APP_BITS):
     
     template = "DATE:     {} (UTC)\n          {} (local)\n\n"
     if isRaw:
-        template += "PING: {:8.3f} ms\n\nDOWN: {:8.2f} " + rateUnitLabel + "\nUP:   {:8.2f} " + rateUnitLabel
+        template += "PING: {:8.3f} ms\nDOWN: {:8.2f} " + rateUnitLabel + "\nUP:   {:8.2f} " + rateUnitLabel
     else:
-        template += "PING: {:8s} ms\n\nDOWN: {:8s} "     + rateUnitLabel + "\nUP:   {:8s} "   + rateUnitLabel
+        template += "PING: {:8s} ms\nDOWN: {:8s} "     + rateUnitLabel + "\nUP:   {:8s} "   + rateUnitLabel
         
     click.echo(template.format(*_data_formatter(data, 0, isRaw, rateUnit)))
+    click.echo()
         
 
 def show_speed_data_table(data, showRowNum=True, isRaw=False, rateUnit=APP_BITS):

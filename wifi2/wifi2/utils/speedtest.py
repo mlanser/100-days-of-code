@@ -3,16 +3,9 @@ import speedtest
 from .datastore import save_csv_data, get_csv_data, save_json_data, get_json_data
 from .datastore import save_sqlite_data, get_sqlite_data, save_influx_data, get_influx_data
 
-#_DB_TABLE_  = 'speedtest'
-_DB_ORDER_  = 'timestamp'
-#_DB_FLDS_   = ['timestamp',  'location',  'locationTZ',  'ping',  'download', 'upload']
-#_DB_CSV_    = [str(), str(), str(), float(), float(), float()]
-#_DB_SQLITE_ = ['real',  'real',  'real',     'real']
-#_DB_INFLUX_ = ['real',  'real',  'real',     'real']
-#DB_TYPES_  = ['float', 'float', 'float',    'float']
-#_FMT_ISO_   = "%Y-%m-%dT%H:%M:%SZ"
-
-_DB_FLDS_ = {
+_DB_TABLE_ = 'SpeedTest'
+_DB_ORDER_ = 'timestamp|ASC'
+_DB_FLDS_  = {
     'raw':    {'timestamp': str, 'location': str, 'locationTZ': str, 'ping': float, 'download': float, 'upload': float},
     'csv':    {'timestamp': None, 'location': None, 'locationTZ': None, 'ping': None, 'download': None, 'upload': None},
     'json':   {'timestamp': None, 'location': None, 'locationTZ': None, 'ping': None, 'download': None, 'upload': None},
@@ -106,7 +99,7 @@ def save_speed_data(settings, data):
         save_sqlite_data(
             data,
             settings.get('host'),
-            _DB_FLDS_['sqlite'], settings['dbtable'],
+            _DB_FLDS_['sqlite'], settings.get('dbtable', _DB_TABLE_),
         )
         
     elif settings.get('storage') == 'Influx':
@@ -153,7 +146,7 @@ def get_speed_data(settings, numRecs, first=True):
     elif settings.get('storage').lower() == 'sqlite':
         return get_sqlite_data(
             settings.get('host'),
-            _DB_FLDS_['raw'], _DB_ORDER_, settings['dbtable'],
+            _DB_FLDS_['raw'], settings.get('dbtable', _DB_TABLE_), _DB_ORDER_,
             numRecs, first
         )
         

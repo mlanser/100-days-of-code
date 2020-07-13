@@ -241,39 +241,46 @@ def _create_sqlite_table(dbCur, tblName, fldNamesWithTypes):
     dbCur.execute("CREATE TABLE IF NOT EXISTS {} ({})".format(tblName, flds))
 
 
-def _save_sqlite_data_row(dbCur, tblName, fldNames, dataRow):
-    """Save single row of data to the database.
+def save_sqlite_data(data, dbFName, tblFlds, tblName):
+    """Save data to SQLite database.
 
     Args:
-        dbCur:    DB cursor for a given database connection
-        tblName:  Table name to look for
-        fldNames: Field names used in table
-        dataRow:  Dictionary with field names (as keys) and associated data values
+        data:     List with one or more data rows
+        dbFName:  File name for SQLite database
+        tblFlds:  Dict w DB field names and data types
+        tblName:  DB table name
 
     Returns:
         int:      Last row ID
     """
 
+    dbConn = _connect_sqlite(dbFName)
+    dbCur = dbConn.cursor()
+
+    if not _exist_sqlite_table(dbCur, tblName):
+        _create_sqlite_table(dbCur, tblName, tblFlds)
+    
+    fldNames = tblFlds.keys()
     flds = ','.join(fldNames)
     vals = ','.join("?" for (_) in fldNames)
+    for row in data:
+        # Using list comprehension to only pull values 
+        # that we want/need from a row of data
+        dbCur.execute("INSERT INTO {}({}) VALUES({})".format(tblName, flds, vals),
+                      [row[key] for key in fldNames])
 
-    # Using list comprehension to only pull values that we want/need from data row
-    #_PP_.pprint("INSERT INTO {}({}) VALUES({})".format(tblName, flds, vals))
-    #_PP_.pprint(dataRow)
-    dbCur.execute("INSERT INTO {}({}) VALUES({})".format(tblName, flds, vals),
-                  [dataRow[key] for key in fldNames])
-    
-    return dbCur.lastrowid
+    dbConn.commit()
+    dbConn.close()
 
 
-def _get_sqlite_data_rows(dbCur, tblName, fldNames, orderBy=None, numRecs=1, first=True):
-    """Retrieve 'numrec' data records from database.
+def get_sqlite_data(dbFName, tblFlds, tblName, orderBy, numRecs=1, first=True):
+    """Retrieve 'numrec' data records from SQLite database.
 
     Args:
-        dbCur:    DB cursor for a given database connection
-        tblName:  Table name to look for
-        fldNames: Field names used in table
-        orderBy:  Field to be sorted by
+        dbFName:  File name for SQLite database
+        tblFlds:  Dict w DB field names and data types
+        tblName:  DB table name
+        orderBy:  Field to sorted by
         numRecs:  Number of records to retrieve
         first:    If TRUE, rerieve first 'numRec' records, else retrieve last 'numRec' records.
 
@@ -281,42 +288,35 @@ def _get_sqlite_data_rows(dbCur, tblName, fldNames, orderBy=None, numRecs=1, fir
         list:     List of all records retrieved
     """
 
-    flds = ','.join("{!s}".format(key) for key in fldNames)
-    sort = (fldNames[0] if orderBy is None else orderBy) + ('' if first else ' DESC')
-    dbCur.execute("SELECT {} FROM {} ORDER BY {} LIMIT {}".format(flds, tblName, sort, numRecs))
-
-    #recs = dbCur.fetchall()
-    #_PP_.pprint("SELECT {} FROM {} ORDER BY {} LIMIT {}".format(flds, tblName, sort, numRecs))
-    #_PP_.pprint(recs)
-    return dbCur.fetchall()
-    #return recs
-
-
-def save_sqlite_data(data, dbFName, tblFlds, fldTypes, tblName):
-    dbConn = _connect_sqlite(dbFName)
-    dbCur = dbConn.cursor()
-
-    if not _exist_sqlite_table(dbCur, tblName):
-        _create_sqlite_table(dbCur, tblName, dict(zip(tblFlds, fldTypes)))
+    def _create_orderby_param(inStr):
+        parts = inStr.split('|')
         
-    for row in data:
-        _save_sqlite_data_row(dbCur, tblName, tblFlds, row)
-
-    dbConn.commit()
-    dbConn.close()
-
-
-def get_sqlite_data(dbFName, tblFlds, orderBy, tblName, numRecs=1, first=True):
+        if len(parts) == 1:
+            return 'ORDER BY {}'.format(parts[0])
+        elif len(parts) >= 2:
+            return 'ORDER BY {} {}'.format(parts[0], parts[1].upper())
+        else:    
+            return ''
+    
     dbConn = _connect_sqlite(dbFName)
     dbCur = dbConn.cursor()
-
-    dataRecords = _get_sqlite_data_rows(dbCur, tblName, tblFlds, orderBy, numRecs, first)
+    
+    fldNames = tblFlds.keys()
+    dbCur.execute("SELECT {} FROM {} {} LIMIT {}".format(
+        ','.join("{!s}".format(key) for key in fldNames),
+        tblName, 
+        _create_orderby_param(list(fldNames)[0] if orderBy is None else orderBy), 
+        numRecs)
+    )
+    
+    dataRecords = dbCur.fetchall()
     dbConn.close()
 
     data = []
     for row in dataRecords:
-        # This creates a dictionary with keys from field name list, mapped against vaues from database.
-        data.append(dict(zip(tblFlds, row)))
+        # Create dictionary with keys from field name 
+        # list, mapped against vaues from database.
+        data.append(dict(zip(tblFlds.keys(), row)))
 
     return data
 
@@ -379,8 +379,8 @@ def get_influx_data(db, dbuser, dbpswd, numRecs=1, first=True):
     dbConn = _connect_sqlite(dbFName)
     dbCur = dbConn.cursor()
 
-    dataRecords = _get_sqlite_data_rows(dbCur, tblName, tblFlds, orderBy, numRecs, first)
-    dbConn.close()
+    #dataRecords = _get_sqlite_data_rows(dbCur, tblName, tblFlds, orderBy, numRecs, first)
+    #dbConn.close()
 
     data = []
     for row in dataRecords:
