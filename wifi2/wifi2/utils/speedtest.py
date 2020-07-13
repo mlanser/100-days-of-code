@@ -1,20 +1,24 @@
-import re
-import subprocess
-
-from datetime import tzinfo, timezone, datetime
-from dateutil import tz
+import speedtest
 
 from .datastore import save_csv_data, get_csv_data, save_json_data, get_json_data
 from .datastore import save_sqlite_data, get_sqlite_data, save_influx_data, get_influx_data
 
-_DB_TABLE_  = 'speedtest'
-_DB_ORDER_  = 'time'
-_DB_FLDS_   = ['time',  'ping',  'download', 'upload']
-_DB_SQLITE_ = ['real',  'real',  'real',     'real']
-_DB_INFLUX_ = ['real',  'real',  'real',     'real']
-_DB_TYPES_  = ['float', 'float', 'float',    'float']
+#_DB_TABLE_  = 'speedtest'
+_DB_ORDER_  = 'timestamp'
+#_DB_FLDS_   = ['timestamp',  'location',  'locationTZ',  'ping',  'download', 'upload']
+#_DB_CSV_    = [str(), str(), str(), float(), float(), float()]
+#_DB_SQLITE_ = ['real',  'real',  'real',     'real']
+#_DB_INFLUX_ = ['real',  'real',  'real',     'real']
+#DB_TYPES_  = ['float', 'float', 'float',    'float']
+#_FMT_ISO_   = "%Y-%m-%dT%H:%M:%SZ"
 
-_FMT_ISO_   = "%Y-%m-%dT%H:%M:%SZ"
+_DB_FLDS_ = {
+    'raw':    {'timestamp': str, 'location': str, 'locationTZ': str, 'ping': float, 'download': float, 'upload': float},
+    'csv':    {'timestamp': None, 'location': None, 'locationTZ': None, 'ping': None, 'download': None, 'upload': None},
+    'json':   {'timestamp': None, 'location': None, 'locationTZ': None, 'ping': None, 'download': None, 'upload': None},
+    'sqlite': {'timestamp': 'TEXT', 'location': 'TEXT', 'locationTZ': 'TEXT', 'ping': 'REAL', 'download': 'REAL', 'upload': 'REAL'},
+    'influx': {'timestamp': 'tag', 'location': 'tag', 'locationTZ': 'tag', 'ping': 'field', 'download': 'field', 'upload': 'field'},
+}
 
 import pprint
 _PP_ = pprint.PrettyPrinter(indent=4)
@@ -23,48 +27,45 @@ _PP_ = pprint.PrettyPrinter(indent=4)
 # =========================================================
 #          S P E E D T E S T   F U N C T I O N S
 # =========================================================
-def run_speed_test(settings):
+
+def run_speedtest(settings):
     """Run speed test on current internet connection to get data points for PING, UP-and DOWNLOAD speeds.
     
     Args:
-        settings: list with application settings
+        settings: list with SpeedTest settings
         
     Returns:
-        Dict record with timestamp, ping, download, and upload times.
+        Dict record with timestamp, ping time, download and upload speeds (bits/s), and more.
         
     Raises:
-        OSError: If 'speedtest-cli' sub-process cannot run and/or exits with non-zero error code.
+        SpeedtestException: If 'speedtest' failed to run or experienced failure during test run.
     """
-    try:
-        proc = subprocess.Popen('speedtest-cli --simple',
-                                shell=True,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT)
-        
-    except OSError as e:
-        raise OSError("Failed to run 'speedtest-cli' utility! [Orig: {}]".format(e))
-
-    proc.wait() 
-    if proc.returncode != 0:
-        raise OSError("Failed to run and/or missing 'speedtest-cli' utility!\n[Code: {}]".format(str(proc.returncode)))
-        
-    response = proc.stdout.read()
     
-    timestamp = datetime.now(timezone.utc).isoformat()
-    ping = re.findall('Ping:\s(.*?)\s', str(response), re.MULTILINE)
-    download = re.findall('Download:\s(.*?)\s', str(response), re.MULTILINE)
-    upload = re.findall('Upload:\s(.*?)\s', str(response), re.MULTILINE)
-    location = 'Some Location name'
-    locationTZ = tz.gettz() #timezone ref TZ at location - timestamps are stored in UTC
+    # If we want to run test against a specific server,
+    # then add server ID
+    # i.e. servers = [1234]
+    servers = []
 
-    return {
-        'timestamp': timestamp,
-        'locationTZ': locationTZ,
-        'location': location,
-        'ping': ping[0].replace(',', '.'),
-        'download': download[0].replace(',', '.'),
-        'upload': upload[0].replace(',', '.'),
-    }
+    # If we want to run single-threaded test, then set to "1"
+    threads = None if settings.get('threads', None).lower() != 'single' else 1
+
+    test = speedtest.Speedtest()
+    test.get_servers(servers)
+    test.get_best_server()
+    test.download(threads=threads)
+    test.upload(threads=threads, pre_allocate=False)
+    
+    if settings.getboolean('share', False):
+        test.results.share()
+        
+    response = test.results.dict()
+    response.update([
+        ('location', settings.get('location')),
+        ('locationTZ', settings.get('locationTZ'))
+    ])
+    
+    return response
+
 
 
 # =========================================================
@@ -81,34 +82,40 @@ def save_speed_data(settings, data):
         OSError: If data store is not supported and/or cannot be accessed.
     """
 
-    if settings['storage'].lower() == 'csv':
+    #print('\n-- [settings] --')
+    #_PP_.pprint(settings)
+    print('\n-- [data] ------')
+    _PP_.pprint(data)
+    print('----------------\n')
+    
+    if settings.get('storage').lower() == 'csv':
         save_csv_data(
             data,
-            settings['host'],
-            _DB_FLDS_
+            settings.get('host'),
+            _DB_FLDS_['csv']
         )
         
-    elif settings['storage'].lower() == 'json':
+    elif settings.get('storage').lower() == 'json':
         save_json_data(
             data,
-            settings['host'],
-            _DB_FLDS_
+            settings.get('host'),
+            _DB_FLDS_['json']
         )
         
-    elif settings['storage'].lower() == 'sqlite':
+    elif settings.get('storage').lower() == 'sqlite':
         save_sqlite_data(
             data,
-            settings['host'],
-            _DB_FLDS_, _DB_SQLITE_, settings['dbtable'],
+            settings.get('host'),
+            _DB_FLDS_['sqlite'], settings['dbtable'],
         )
         
-    elif settings['storage'] == 'Influx':
+    elif settings.get('storage') == 'Influx':
         save_influx_data(
             data,
-            settings['host'], settings['port'],
+            settings.get('host'), settings['port'],
             settings['dbname'], settings['dbtable'],
             settings['dbuser'], settings['dbpswd'],
-            _DB_FLDS_, _DB_INFLUX_
+            _DB_FLDS_['influx']
         )
         
     else:    
@@ -129,34 +136,34 @@ def get_speed_data(settings, numRecs, first=True):
     Raises:
         OSError: If data store is not supported and/or cannot be accessed.
     """
-    if settings['storage'].lower() == 'csv':
+    if settings.get('storage').lower() == 'csv':
         return get_csv_data(
-            settings['host'],
-            _DB_FLDS_,
+            settings.get('host'),
+            _DB_FLDS_['raw'],
             numRecs, first
         )
         
-    elif settings['storage'].lower() == 'json':
+    elif settings.get('storage').lower() == 'json':
         return get_json_data(
-            settings['host'],
-            _DB_FLDS_,
+            settings.get('host'),
+            _DB_FLDS_['raw'],
             numRecs, first
         )
         
-    elif settings['storage'].lower() == 'sqlite':
+    elif settings.get('storage').lower() == 'sqlite':
         return get_sqlite_data(
-            settings['host'],
-            _DB_FLDS_, _DB_ORDER_, settings['dbtable'],
+            settings.get('host'),
+            _DB_FLDS_['raw'], _DB_ORDER_, settings['dbtable'],
             numRecs, first
         )
         
-    elif settings['storage'] == 'Influx':
+    elif settings.get('storage') == 'Influx':
         return get_influx_data(
-            settings['host'], settings['port'],
+            settings.get('host'), settings['port'],
             settings['dbname'], settings['dbtable'],
             settings['dbuser'], settings['dbpswd'],
             numRecs, first
         )
         
     else:    
-        raise OSError("Data storage type '{}' is not supported!".format(str(settings['storage'])))
+        raise OSError("Data storage type '{}' is not supported!".format(str(settings.get('storage'))))

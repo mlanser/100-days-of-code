@@ -2,13 +2,14 @@ import requests
 import os
 import re
 import click
-from datetime import datetime
-from dateutil import tz
+import time
+import dateutil
+import pytz
 
 from pathlib import Path
 from .utils.settings import read_settings, save_settings, show_settings, isvalid_settings
 from .utils.qr import wifi_qr
-from .utils.speedtest import run_speed_test, get_speed_data, save_speed_data
+from .utils.speedtest import run_speedtest, get_speed_data, save_speed_data
 
 APP_NAME = 'wifi2'
 APP_CONFIG = 'config.ini'
@@ -16,6 +17,7 @@ APP_MIN_RUNS = 1
 APP_MAX_RUNS = 100
 APP_HISTORY = 1000
 APP_SLEEP = 60
+APP_BITS = 'bits'
 
 import pprint
 _PP_ = pprint.PrettyPrinter(indent=4)
@@ -62,17 +64,27 @@ def current_weather(location, api_key='OWM_API_KEY'):
     return response.json()['weather'][0]['description']
 
 
-def _data_formatter(data, rowNum=0, isRaw=False):
+def _data_formatter(data, rowNum=0, isRaw=False, rateUnit=APP_BITS):
+    
+    def _date_maker(timestamp, timezone=None, fmtstr=None):
+        dateOrig = dateutil.parser.isoparse(timestamp)
+        dateFinal = dateOrig if timezone is None else dateOrig.astimezone(pytz.timezone(timezone)) 
+        
+        return dateFinal.strftime('%m/%d/%y %H:%M' if fmtstr is None else fmtstr)
+    
     na = '- n/a -'
     out = (str(rowNum),) if rowNum > 0 else tuple()
-    _PP_.pprint(data)
 
+    # Mbit/s or MB/s
+    rateUnitDivisor = 1000000 if rateUnit.lower() != 'bytes' else 8000000
+    
     if isRaw:
         return out + (
-            na if 'timestamp' not in data else datetime.fromisoformat(data['timestamp']).strftime('%m/%d/%y %H:%M'),
+            na if 'timestamp' not in data else _date_maker(data['timestamp'], None, '%m/%d/%y %H:%M'),
+            na if 'timestamp' not in data else _date_maker(data['timestamp'], data['locationTZ'], '%m/%d/%y %H:%M'),
             na if 'ping' not in data else float(data['ping']),
-            na if 'download' not in data else float(data['download']),
-            na if 'upload' not in data else float(data['upload'])
+            na if 'download' not in data else float(data['download']/rateUnitDivisor),
+            na if 'upload' not in data else float(data['upload']/rateUnitDivisor)
         )
     else:
         return out + (
@@ -80,58 +92,79 @@ def _data_formatter(data, rowNum=0, isRaw=False):
             na if len(data) < 2 else data[1],
             na if len(data) < 3 else data[2],
             na if len(data) < 4 else data[3],
+            na if len(data) < 5 else data[4],
         )
 
 
-def show_speed_data(data, isRaw=False):
+def show_speed_data(data, isRaw=False, rateUnit=APP_BITS):
     """Format and display SpeedTest data.
     
     Args:
-        data: Individual data row/record as list.
-        isRaw:  If TRUE, data is is 'raw' format.
+        data:     Individual data row/record as list.
+        isRaw:    If TRUE, data is is 'raw' format.
+        rateUnit: MB/s if 'bytes', else Mbit/s
     """
-    template = "DATE: {}\nPING: {} ms\nDOWN: {} Mbit/s\nUP:   {} Mbit/s"
-    click.echo(template.format(*_data_formatter(data, 0, isRaw)))
+
+    # Mbit/s or MB/s
+    rateUnitLabel = 'Mbit/s' if rateUnit.lower() != 'bytes' else 'MB/s'
+    
+    template = "DATE:     {} (UTC)\n          {} (local)\n\n"
+    if isRaw:
+        template += "PING: {:8.3f} ms\n\nDOWN: {:8.2f} " + rateUnitLabel + "\nUP:   {:8.2f} " + rateUnitLabel
+    else:
+        template += "PING: {:8s} ms\n\nDOWN: {:8s} "     + rateUnitLabel + "\nUP:   {:8s} "   + rateUnitLabel
+        
+    click.echo(template.format(*_data_formatter(data, 0, isRaw, rateUnit)))
         
 
-def show_speed_data_table(data, showRowNum=True, isRaw=False):
+def show_speed_data_table(data, showRowNum=True, isRaw=False, rateUnit=APP_BITS):
     """Format and display SpeedTest data.
     
     Args:
         data:       List of data rows/records if 'table' is TRUE. Else use individual data row/record.
         showRowNum: If TRUE, show row number in left-most column
         isRaw:      If TRUE, data is is 'raw' format.
+        rateUnit:   MB/s if 'bytes', else Mbit/s
     """
+    
+    # Mbit/s or MB/s
+    rateUnitLabel = 'Mbit/s' if rateUnit.lower() != 'bytes' else 'MB/s'
+
     if showRowNum:
-        #           |1234567890123456789012|1234567890|1234567890|1234567890|
-        #           |                      |          |          |          |
-        firstHdr  = "     |    Date/Time   |   PING   |   DOWN   |    UP    "
-        secondHdr = "  #  | MM/DD/YY HH:MM |    ms    |  MBit/s  |  MBit/s  "
-        divider   = "-----|----------------|----------|----------|----------"
-        firstCol  = " {:>3s} | {!s:14s} |" if isRaw else " {:>3s} : {:14s} |"
+        #           |12345|123456789123456789|123456789123456789|1234567890|1234567890|1234567890|
+        #           |     |                  |                  |          |          |          |
+        hdr1      = "     |              Date/Time              |          |          |          "
+        hdr2      = "     |        UTC       |   At Location    |   PING   |   DOWN   |    UP    "
+        hdr3      = "  #  |  MM/DD/YY HH:MM  |  MM/DD/YY HH:MM  |    ms    |  {0:6s}  |  {0:6s}  ".format(rateUnitLabel)
+        divider   = "-----|------------------|------------------|----------|----------|----------"
+        
+        col1 = " {:>3s} |  {!s:14s}  |  {!s:14s}  |" if isRaw else " {:>3s} |  {:14s}  |  {:14s}  |"
     else:
-        #           |1234567890123456|1234567890|1234567890|1234567890|
-        #           |                |          |          |          |
-        firstHdr  = "    Date/Time   |   PING   |   DOWN   |    UP    "
-        secondHdr = " MM/DD/YY HH:MM |    ms    |  MBit/s  |  MBit/s  "
-        divider   = "----------------|----------|----------|----------"
-        firstCol = " {!s:14s} |" if isRaw else "    {:14s}    |"
+        #           |123456789012345678|123456789012345678|1234567890|1234567890|1234567890|
+        #           |                  |                  |          |          |          |
+        hdr1      = "              Date/Time              |          |          |          "
+        hdr2      = "        UTC       |    At Location   |   PING   |   DOWN   |    UP    "
+        hdr3      = "  MM/DD/YY HH:MM  |  MM/DD/YY HH:MM  |    ms    |  {0:6s}  |  {0:6s}  ".format(rateUnitLabel)
+        divider   = "------------------|------------------|----------|----------|----------"
+        
+        col1 = "  {!s:14s}  |  {!s:14s}  |" if isRaw else "  {:14s}  |  {:14s}  |"
 
-    otherCol = " {:8.3f} | {:8.2f} | {:8.2f} " if isRaw else " {:18s} | {:8s} | {:8s} | {:8s} "
+    colN = " {:8.3f} | {:8.2f} | {:8.2f} " if isRaw else " {:8s} | {:8s} | {:8s} "
 
-    template = firstCol + otherCol
+    template = col1 + colN
     rowNum = 0
 
     click.echo()
-    click.echo(firstHdr)
+    click.echo(hdr1)
+    click.echo(hdr2)
     click.echo(divider)
-    click.echo(secondHdr)
+    click.echo(hdr3)
     click.echo(divider)
 
     for row in data:
         if showRowNum:
             rowNum += 1
-        click.echo(template.format(*_data_formatter(row, rowNum, isRaw)))
+        click.echo(template.format(*_data_formatter(row, rowNum, isRaw, rateUnit)))
 
     click.echo()
 
@@ -295,6 +328,8 @@ def speedtest(ctx, display: str, save: bool, cntr: int, history: bool, first: bo
     if not isvalid_settings(ctx.obj['settings']):
         raise click.ClickException("Invalid and/or incomplete config info!")
 
+    unit = ctx.obj['settings']['speedtest'].get('unit', APP_BITS)
+    
     # Show historic data
     if history:
         if cntr < 1 or cntr > ctx.obj['globals']['appHistory']:
@@ -309,7 +344,7 @@ def speedtest(ctx, display: str, save: bool, cntr: int, history: bool, first: bo
             data = get_speed_data(ctx.obj['settings']['speedtest'], cntr, first)
 
             if len(data):
-                show_speed_data_table(data, showRowNum=True, isRaw=True)
+                show_speed_data_table(data, showRowNum=True, isRaw=True, rateUnit=unit)
             else:
                 click.echo('-- No data records found! --')
 
@@ -329,14 +364,14 @@ def speedtest(ctx, display: str, save: bool, cntr: int, history: bool, first: bo
         data = []
         for i in range(0, cntr):
             try:
-                data.append(run_speed_test(ctx.obj['settings']['speedtest']))
+                data.append(run_speedtest(ctx.obj['settings']['speedtest']))
             
             except OSError as e:     
                 raise click.ClickException(e)
 
             if display.lower() == 'stdout':
                 click.echo('-- Internet Speed Test {} of {} --'.format(str(i + 1), str(cntr)))
-                show_speed_data(data[i], isRaw=True)
+                show_speed_data(data[i], isRaw=True, rateUnit=unit)
 
             elif display.lower() == 'epaper':
                 #

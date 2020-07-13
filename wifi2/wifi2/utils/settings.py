@@ -108,10 +108,14 @@ def _validate_data_settings(settings):
 # ---------------------------------------------------------
 #
 # [<nameof test tool section>]
-# uri = <uri/path to test tool>
-# params = <any test tool params>
 # count = [1-100]                       - num test cycle runs
 # sleep = [1-60]                        - seconds between each test run
+#
+# threads = single|multi                - run single or multiple threads
+# unit = bits|bytes                     - display speeds in Mbits/s or MB/s 
+# share = yes|no                        - share test results
+# location = <some location name>       - name of location where test computer is located
+# locationTZ = <TZ name>                - Time zone at locatiomn (e.g. 'America/New York') 
 #
 # storage = CSV|JSON|SQLite|Influx      - data storage type
 # host = <hostname or file path>        - data storage host. If file-based (i.e. CSV, JSON, SQLite),
@@ -124,22 +128,16 @@ def _validate_data_settings(settings):
 # port = <db server port>               - Used for InfluxDB
 # dbuser = <db user w proper access>    - Used for InfluxDB
 # dbpswd = <db user password>           - Used for InfluxDB
-# dbname = <db name>                    - Used for InfluxDB
+# dbname = <db name>                    - Used for SQLite and Influx
 # dbtable = <db table name>             - Used for SQLite and Influx
 #
 def _get_speedtest_settings(ctxGlobals):
-    dbport  = None
+    port    = None
     dbuser  = None
     dbpswd  = None
-    dbname  = None
-    dbtable = None
+    dbname  = 'Wifi2'
+    dbtable = 'SpeedTest'
 
-    uri = click.prompt(
-        "Enter URI for 'speedtest-cli'",
-        type=click.Path(),
-        default=click.get_app_dir('speedtest-cli')
-    )
-    params  = None
     count = click.prompt(
         "Enter default for number of test cycle runs:",
         type=click.IntRange(ctxGlobals['appMinRuns'], ctxGlobals['appMaxRuns'], clamp=True),
@@ -153,6 +151,33 @@ def _get_speedtest_settings(ctxGlobals):
         show_default=True,
     )
     
+    threads = click.prompt(
+        "Number of threads for SpeedTest", 
+        type=click.Choice(['single', 'multi'], case_sensitive=False),
+        default='multi',
+        show_default=True,
+    )
+    unit = click.prompt(
+        "Select speed rate unit per second", 
+        type=click.Choice(['bits', 'bytes'], case_sensitive=False),
+        default='bits',
+        show_default=True,
+    )
+    share = click.prompt(
+        "Share test results", 
+        type=click.Choice(['yes', 'no'], case_sensitive=False),
+        default='no',
+        show_default=True,
+    )
+    location = click.prompt(
+        "Name of location where test is run", 
+    )
+    locationTZ = click.prompt(
+        "Name of (PYTZ) timezone for location", 
+        default='America/New_York',
+        show_default=True,
+    )
+    
     storage = click.prompt(
         "Enter data storage type", 
         type=click.Choice(['CSV', 'JSON', 'SQLite', 'Influx'], case_sensitive=False)
@@ -161,23 +186,23 @@ def _get_speedtest_settings(ctxGlobals):
         host = click.prompt(
             "Enter path to CSV data file",
             type=click.Path(),
-            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'speedtest.csv'),
+            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbtable.lower() + '.csv'),
         )
     elif storage.lower() == _JSON_:
         host = click.prompt(
             "Enter path to JSON data file",
             type=click.Path(),
-            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), 'speedtest.json'),
+            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbtable.lower() + '.json'),
         )
     elif storage.lower() == _SQLite_:
         host = click.prompt(
             "Enter path to SQLite database.\nNote: ':memory:' is not supported.",
             type=click.Path(),
-            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), ctxGlobals['appName'] + '.sqlite'),
+            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbname.lower() + '.sqlite'),
         )
-        dbTable = click.prompt(
+        dbtable = click.prompt(
             "Enter name of database table",
-            default='SpeedTest'
+            default=dbtable
         )
     elif storage.lower() == _Influx_:
         host = click.prompt("Enter database host name")
@@ -186,21 +211,24 @@ def _get_speedtest_settings(ctxGlobals):
         dbpswd = click.prompt("Enter database user password", default='', hide_input=True)
         dbname = click.prompt(
             "Enter name of database",
-            default='SpeedTest'
+            default=dbname
         )
         dbtable = click.prompt(
             "Enter name of database table",
-            default='SpeedTestLog'
+            default=dbtable
         )
     else:
         raise ValueError("Invalid storage type '{}'".format(storage))
         
     settings = {
         'speedtest': {
-            'URI': uri,
-            'params': params,
             'count': count,
             'sleep': sleep,
+            'threads': 'multi' if threads.lower() != 'single' else 'single',
+            'unit': 'bits' if unit.lower() != 'bytes' else 'bytes',
+            'share': False if share.lower() != 'yes' else True, 
+            'location': location,
+            'locationTZ': locationTZ,
             'host': host,
             'port': port,
             'dbuser': dbuser, # @TODO NEEDS TO BE LOW-LEVEL USER ACCT
@@ -210,8 +238,6 @@ def _get_speedtest_settings(ctxGlobals):
             }
         }
     
-    # /usr/local/bin/speedtest-cli
-    
     return settings
 
 
@@ -220,7 +246,7 @@ def _validate_speedtest_settings(settings):
     # @NOTE - we can only verify that values are stored
     #         in config, but not that they're correct.
     #
-    if not settings.has_option('speedtest', 'uri'):
+    if not settings.has_option('speedtest', 'host'):
         return False
 
     return True
@@ -454,10 +480,16 @@ def show_settings(ctxGlobals, section):
     if section in ['all', 'test']:
         click.echo("\n--- [test] --------------------")
         # [<nameof test tool section>]
-        # uri = <uri/path to test tool>
-        # params = <any test tool params>
+        # uri = <uri/path to test tool>         - USED AS NEEDED -
+        # params = <any test tool params>       - USED AS NEEDED -
         # count = [1-100]                       - num test cycle runs
         # sleep = [1-60]                        - seconds between each test run
+        #
+        # threads = single|multi                - run single or multiple threads
+        # unit = bits|bytes                     - display speeds in Mbits/s or MB/s 
+        # share = yes|no                        - share test results
+        # location = <some location name>       - name of location where test computer is located
+        # locationTZ = <TZ name>                - Time zone at locatiomn (e.g. 'America/New York') 
         #
         # storage = CSV|JSON|SQLite|Influx      - data storage type
         # host = <hostname or file path>        - data storage host. If file-based (i.e. CSV, JSON, SQLite),
@@ -474,10 +506,13 @@ def show_settings(ctxGlobals, section):
         # dbtable = <db table name>             - Used for SQLite and Influx
         #
         click.echo("SpeedTest Settings")
-        click.echo("  CLI URI:          {}".format(_get_option_val(settings, 'speedtest', 'uri')))
-        click.echo("  CLI params:       {}".format(_get_option_val(settings, 'speedtest', 'params')))
         click.echo("  Test Run Count:   {}".format(_get_option_val(settings, 'speedtest', 'count')))
-        click.echo("  Wait Time:        {}".format(_get_option_val(settings, 'speedtest', 'sleep')))
+        click.echo("  Sleep/Wait Time:  {}".format(_get_option_val(settings, 'speedtest', 'sleep')))
+        click.echo("  Threads:          {}".format(_get_option_val(settings, 'speedtest', 'threads')))
+        click.echo("  Speed Rate Unit:  {}".format(_get_option_val(settings, 'speedtest', 'units')))
+        click.echo("  Share Results:    {}".format(_get_option_val(settings, 'speedtest', 'share')))
+        click.echo("  Location Name:    {}".format(_get_option_val(settings, 'speedtest', 'location')))
+        click.echo("  Location TZ:      {}".format(_get_option_val(settings, 'speedtest', 'locationTZ')))
         click.echo("  DB Storage Type:  {}".format(_get_option_val(settings, 'speedtest', 'storage')))
         click.echo("  DB Host:          {}".format(_get_option_val(settings, 'speedtest', 'host')))
         click.echo("  DB Port #:        {}".format(_get_option_val(settings, 'speedtest', 'port')))

@@ -1,4 +1,5 @@
 import os
+import csv
 import json
 import sqlite3
 from influxdb import InfluxDBClient
@@ -23,72 +24,35 @@ def _process_data(inData, fldNames):
 # =========================================================
 #                  C S V   F U N C T I O N S
 # =========================================================
-def _count_csv_recs(dbFName):
-    """Count number of records/rows in CSV file
-
-    Args:
-        dbFName: CSV file name
-
-    Returns:
-         Number or records.
-
-         Please note that the first row in the file is supposed
-         to be the header row. So if the file is empty or has
-         only 1 row - the header row - then the file has no records.
-    """
-
-    try:
-        dbFile = open(dbFName, 'r')
-
-    except OSError as e:
-        raise OSError("Failed to read '{}'!\n{}".format(dbFName, e))
-
-    else:
-        with dbFile:
-            for cntr, row in enumerate(dbFile, 0):
-                pass
-        dbFile.close()
-
-    return cntr
-
-
 def save_csv_data(data, dbFName, dbFlds):
     """Save data to CSV file.
     
     Args:
         data:    List with one or more data rows
         dbFName: CSV file name
-        dbFlds:  List of field names
+        dbFlds:  Dict with field names (as keys) and data types
 
     Raises:
         OSError: If unable to access or save data to CSV file.
     """
-    def _header_row(listFlds):
-        return '{}\r\n'.format(','.join(listFlds))
-
-    def _data_row_formatter(dataRow, listFlds):
-        # Using list comprehension to only pull exactly what we want/need
-        return '{}\r\n'.format(','.join(str(dataRow[key]) for key in listFlds))
 
     if not os.path.exists(dbFName):
         path = os.path.dirname(os.path.abspath(dbFName))
         if not os.path.exists(path):
             os.makedirs(path)
     
-    try:
-        dbFile = open(dbFName, 'a+')
+    with open(dbFName, 'a+', newline='') as dbFile:
+        dataWriter = csv.DictWriter(dbFile, dbFlds.keys(), extrasaction='ignore')
 
-    except OSError as e:
-        raise OSError("Failed to save data to '{}'!\n{}".format(dbFName, e))
+        try:
+            if os.stat(dbFName).st_size == 0:
+                dataWriter.writeheader()
 
-    else:
-        if os.stat(dbFName).st_size == 0:
-            dbFile.write(_header_row(dbFlds))
+            for row in data:
+                dataWriter.writerow(row)
 
-        for row in data:
-            dbFile.write(_data_row_formatter(row, dbFlds))
-
-        dbFile.close()
+        except csv.Error as e:
+            raise OSError("Failed to save data to '{}'!\n{}".format(dbFName, e))
     
 
 def get_csv_data(dbFName, dbFlds, numRecs=1, first=True):
@@ -96,7 +60,7 @@ def get_csv_data(dbFName, dbFlds, numRecs=1, first=True):
     
     Args:
         dbFName:  CSV file name
-        dbFlds:   List of data record field names
+        dbFlds:   Dict with field names (as keys) and data types
         numRecs:  Number of records to retrieve
         first:    If TRUE, retrieve first 'numRecs' records. Else retrieve last 'numRecs' records.
 
@@ -104,31 +68,43 @@ def get_csv_data(dbFName, dbFlds, numRecs=1, first=True):
         OSError: If unable to access or read data from CSV file.
     """
 
-    try:
-        dbFile = open(dbFName, 'r')
-        raw = dbFile.readline().rstrip('\n')    # Read header row
-        if not raw:
-            raise OSError("Empty data file")
-
-        data = []
-        lastRec = numRecs if first else _count_csv_recs(dbFName)
-        firstRec = 0 if first else max(0, lastRec - numRecs)
-
-        for i in range(0, lastRec):             # Read data records
-            raw = dbFile.readline().rstrip('\n')
-            if i < firstRec:
-                continue
-            elif raw:
-                data.append(dict(zip(dbFlds, raw.split(','))))
-            else:
-                break
-
-    except OSError as e:
-        raise OSError("Failed to read data from '{}'!\n{}".format(dbFName, e))
-
-    else:
-        dbFile.close()
+    def _row_counter(fp):
+        for cntr, row in enumerate(fp, 0):              # Count all lines/rows ...
+            pass
+        fp.seek(0)                                      # ... and 'rewind' file to beginning
         
+        return cntr
+
+    def _process_row(rowIn, flds):
+        rowOut = {}
+        for key, val in rowIn.items():
+            if key in flds:
+                rowOut.update({key : flds[key](val)})
+    
+        return rowOut
+    
+    data = []
+    with open(dbFName, 'r', newline='') as dbFile:
+        lastRec = numRecs if first else _row_counter(dbFile)
+        firstRec = 1 if first else max(1, lastRec - numRecs + 1)
+        
+        dataReader = csv.DictReader(dbFile, dbFlds.keys())
+
+        try:    
+            for i, row in enumerate(dataReader, 0):
+                if i < firstRec:
+                    continue;
+                elif i > lastRec:
+                    break
+                else:    
+                    data.append(_process_row(row, dbFlds))
+
+        except csv.Error as e:
+            raise OSError("Failed to read data from '{}'!\n{}".format(dbFName, e))
+
+        if len(data) < 1:    
+            raise OSError("Empty data file")
+            
     return data
 
     
@@ -165,11 +141,11 @@ def save_json_data(data, dbFName, dbFlds):
 
     Args:
         data:    List with one or more data rows
-        dbFName: CSV file name
-        dbFlds:  List of field names
+        dbFName: JSON file name
+        dbFlds:  Dict with field names (as keys) and data types
 
     Raises:
-        OSError: If unable to access or save data to CSV file.
+        OSError: If unable to access or save data to JSON file.
     """
 
     if not os.path.exists(dbFName):
@@ -178,7 +154,7 @@ def save_json_data(data, dbFName, dbFlds):
             os.makedirs(path)
     try:
         oldData = _read_json(dbFName) if os.path.exists(dbFName) else None
-        newData = _process_data(data, dbFlds)
+        newData = _process_data(data, dbFlds.keys())
 
         _write_json(dbFName, newData if oldData is None else oldData + newData)
 
@@ -191,12 +167,12 @@ def get_json_data(dbFName, dbFlds, numRecs=1, first=True):
 
     Args:
         dbFName: JSON file name
-        dbFlds:  List of field names
+        dbFlds:  Dict with field names (as keys) and data types
         numRecs: Number of records to retrieve
         first:   If TRUE, retrieve first 'numRecs' records. Else retrieve last 'numRecs' records.
 
     Raises:
-        OSError: If unable to access or read data from CSV file.
+        OSError: If unable to access or read data from JSON file.
     """
 
     try:
@@ -207,7 +183,7 @@ def get_json_data(dbFName, dbFlds, numRecs=1, first=True):
         else:
             lastRec = numRecs if first else len(jsonData)
             firstRec = 0 if first else max(0, lastRec - numRecs)
-            data = _process_data(jsonData[firstRec:lastRec], dbFlds)
+            data = _process_data(jsonData[firstRec:lastRec], dbFlds.keys())
 
     except OSError as e:
         raise OSError("Failed to read data from '{}'!\n{}".format(dbFName, e))

@@ -102,3 +102,19 @@ Started on [Sunday June 14, 2020].
 ### R4D26 - 09JUL2020
 * Still working on integrating InfluxDB support.
 * Reworking how we save time stamps.
+
+### R4D27 - 10JUL2020
+* Still working on integrating InfluxDB support.
+* Reworking how we save timestamps, use UTC, present in local time, etc..
+
+### R4D28 - 11JUL2020
+* Still working on integrating InfluxDB support.
+* Reworking how we save time stamps.
+
+### R4D29 - 12JUL2020
+* Crawling out of datetime-UTC-localtime rabbit hole.
+* Totally re-doing SpeedTest to use the Python API instead.
+* Still working on Influx stuff.
+
+
+
