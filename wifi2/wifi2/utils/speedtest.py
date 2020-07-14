@@ -3,6 +3,7 @@ import speedtest
 from .datastore import save_csv_data, get_csv_data, save_json_data, get_json_data
 from .datastore import save_sqlite_data, get_sqlite_data, save_influx_data, get_influx_data
 
+_DB_NAME_  = 'Wifi2'
 _DB_TABLE_ = 'SpeedTest'
 _DB_ORDER_ = 'timestamp|ASC'
 _DB_FLDS_  = {
@@ -105,10 +106,9 @@ def save_speed_data(settings, data):
     elif settings.get('storage') == 'Influx':
         save_influx_data(
             data,
-            settings.get('host'), settings['port'],
-            settings['dbname'], settings['dbtable'],
-            settings['dbuser'], settings['dbpswd'],
-            _DB_FLDS_['influx']
+            settings.get('host'), settings.get('port'), settings.get('ssl'),
+            settings.get('dbuser'), settings.get('dbpswd'),
+            _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_), settings.get('dbname', _DB_NAME_), 
         )
         
     else:    

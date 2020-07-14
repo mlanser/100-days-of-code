@@ -126,6 +126,7 @@ def _validate_data_settings(settings):
 #           localhost                   - Influx db server can hold several databases
 #
 # port = <db server port>               - Used for InfluxDB
+# ssl = yes|no                          - Used for InfluxDB
 # dbuser = <db user w proper access>    - Used for InfluxDB
 # dbpswd = <db user password>           - Used for InfluxDB
 # dbname = <db name>                    - Used for SQLite and Influx
@@ -133,10 +134,10 @@ def _validate_data_settings(settings):
 #
 def _get_speedtest_settings(ctxGlobals):
     port    = None
-    dbuser  = None
-    dbpswd  = None
-    dbname  = 'Wifi2'
-    dbtable = 'SpeedTest'
+    dbUser  = None
+    dbPswd  = None
+    dbName  = 'Wifi2'
+    dbTable = 'SpeedTest'
 
     count = click.prompt(
         "Enter default for number of test cycle runs:",
@@ -186,36 +187,49 @@ def _get_speedtest_settings(ctxGlobals):
         host = click.prompt(
             "Enter path to CSV data file",
             type=click.Path(),
-            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbtable.lower() + '.csv'),
+            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbTable.lower() + '.csv'),
+            show_default=True,
         )
     elif storage.lower() == _JSON_:
         host = click.prompt(
             "Enter path to JSON data file",
             type=click.Path(),
-            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbtable.lower() + '.json'),
+            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbTable.lower() + '.json'),
+            show_default=True,
         )
     elif storage.lower() == _SQLite_:
         host = click.prompt(
             "Enter path to SQLite database.\nNote: ':memory:' is not supported.",
             type=click.Path(),
-            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbname.lower() + '.sqlite'),
+            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbName.lower() + '.sqlite'),
+            show_default=True,
         )
-        dbtable = click.prompt(
+        dbTable = click.prompt(
             "Enter name of database table",
-            default=dbtable
+            default=dbtable,
+            show_default=True,
         )
     elif storage.lower() == _Influx_:
         host = click.prompt("Enter database host name")
         port = click.prompt("Enter database host port", default='')
-        dbuser = click.prompt("Enter database user name", default='')
-        dbpswd = click.prompt("Enter database user password", default='', hide_input=True)
-        dbname = click.prompt(
-            "Enter name of database",
-            default=dbname
+        ssl = click.prompt(
+            "Use SSL", 
+            type=click.Choice(['yes', 'no'], case_sensitive=False),
+            default='no',
+            show_default=True,
         )
-        dbtable = click.prompt(
+        dbUser = click.prompt("Enter database user name")
+        dbPswd = click.prompt("Enter database user password", default='', hide_input=True)
+        dbToken = click.prompt("Enter JWT token", default='')
+        dbName = click.prompt(
+            "Enter name of database",
+            default=dbName,
+            show_default=True,
+        )
+        dbTable = click.prompt(
             "Enter name of database table",
-            default=dbtable
+            default=dbTable,
+            show_default=True,
         )
     else:
         raise ValueError("Invalid storage type '{}'".format(storage))
@@ -231,10 +245,12 @@ def _get_speedtest_settings(ctxGlobals):
             'locationTZ': locationTZ,
             'host': host,
             'port': port,
-            'dbuser': dbuser, # @TODO NEEDS TO BE LOW-LEVEL USER ACCT
-            'dbpswd': dbpswd, # @TODO NEED TO ENCRYPT SOMEHOW!!!
-            'dbname': dbname,
-            'dbtable': dbtable,
+            'ssl': False if ssl.lower() != 'yes' else True, 
+            'dbuser': dbUser,       # Should NOT be 'root' account in PROD
+            'dbpswd': dbPswd,       # @TODO NEED TO ENCRYPT SOMEHOW!!!
+            'dbtoken': dbToken,     # Preferred!
+            'dbname': dbName,
+            'dbtable': dbTable,
             }
         }
     
@@ -290,7 +306,7 @@ def _get_sometest_settings(ctxGlobals):
         type=click.Path(),
         default=click.get_app_dir('sometest-cli')
     )
-    params  = None
+    params = None
     count = click.prompt(
         "Enter default for number of test cycle runs:",
         type=click.IntRange(ctxGlobals['appMinRuns'], ctxGlobals['appMaxRuns'], clamp=True),

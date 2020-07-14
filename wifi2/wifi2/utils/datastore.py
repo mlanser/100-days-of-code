@@ -204,7 +204,7 @@ def _connect_sqlite(dbFName):
         dbConn = sqlite3.connect(dbFName)
         
     except sqlite3.Error as e:
-        raise OSError("Failed to connect to database '{}'\n{}!".format(dbFName, e))
+        raise OSError("Failed to connect to SQLite database '{}'\n{}!".format(dbFName, e))
     
     return dbConn
 
@@ -302,12 +302,9 @@ def get_sqlite_data(dbFName, tblFlds, tblName, orderBy, numRecs=1, first=True):
     dbCur = dbConn.cursor()
     
     fldNames = tblFlds.keys()
-    dbCur.execute("SELECT {} FROM {} {} LIMIT {}".format(
-        ','.join("{!s}".format(key) for key in fldNames),
-        tblName, 
-        _create_orderby_param(list(fldNames)[0] if orderBy is None else orderBy), 
-        numRecs)
-    )
+    flds = ','.join("{!s}".format(key) for key in fldNames)
+    sort = _create_orderby_param(list(fldNames)[0] if orderBy is None else orderBy)
+    dbCur.execute("SELECT {} FROM {} {} LIMIT {}".format(flds, tblName, sort, numRecs))
     
     dataRecords = dbCur.fetchall()
     dbConn.close()
@@ -324,55 +321,55 @@ def get_sqlite_data(dbFName, tblFlds, tblName, orderBy, numRecs=1, first=True):
 # =========================================================
 #             I N F L U X   F U N C T I O N S
 # =========================================================
-def _connect_influx(db):
-    if not os.path.exists(dbFName):
-        path = os.path.dirname(os.path.abspath(dbFName))
-        if not os.path.exists(path):
-            os.makedirs(path)
-    
+def _connect_influx(host, port, ssl, dbUser, dbPswd):
+    _PP_.pprint(host)
+    _PP_.pprint(port)
+    _PP_.pprint(ssl)
+    _PP_.pprint(dbUser)
+    _PP_.pprint(dbPswd)
+    return None
     try:
-        dbConn = sqlite3.connect(dbFName)
+        dbClient = InfluxDBClient(host=host, port=port, username=dbUser, password=dbPswd, ssl=ssl, verify_ssl=ssl)
         
-    except sqlite3.Error as e:
-        raise OSError("Failed to connect to database '{}'\n{}!".format(dbFName, e))
+    except Error as e:
+        raise OSError("Failed to connect to Influx database '{}'\n{}!".format(host, e))
     
-    return dbConn
+    return dbClient
 
 
-def _exist_influx_table(dbCur, tblName):
-    """Check if a table with a given name exists.
-
-    Note that SQLIte3 stores table names in the 'sqlite_master' table.
-
-    Args:
-        dbCur:   DB cursor for a given database connection
-        tblName: Table name to look for
-
-    Returns:
-        bool:    TRUE if table exists, Else FALSE.
-    """
-
-    dbCur.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='{}'".format(tblName))
-
-    return True if dbCur.fetchone()[0] == 1 else False
-
-
-def save_influx_data(data, dbhost, dbport, dbuser, dbpswd, tblFlds, fldTypes, tblName):
-    dbClient = _connect_influx(dbhost, dbport, dbuser, dbpswd)
+def _exist_influx_database(dbClient, dbName):
+    dbList = dbClient.get_list_database()
     
-    #if not _exist_sqlite_table(dbCur, tblName):
-    #    _create_sqlite_table(dbCur, tblName, dict(zip(tblFlds, fldTypes)))
-    #else:
-    #    for row in data:
-    #        _save_sqlite_data_row(dbCur, tblName, tblFlds, row)
+    return (dbName in dbList.values())
 
-    #dbConn.commit()
-    #dbConn.close()
-    print(data)
-    print(tblFlds)
-    print(fldTypes)
-    print(tblName)
-    print('-- SAVING TO INFLUX -- {}:{}:{}'.format(db, dbuser, dbpswd))
+
+def save_influx_data(dataIn, host, port, ssl, dbUser, dbPswd, tblFlds, tblName, dbName):
+    
+    def _process_data_row(rowIn, tblFlds, tblName):
+        _PP_.pprint(rowIn)
+        _PP_.pprint(tblFlds)
+        _PP_.pprint(tblName)
+        print('-- SAVING TO INFLUX --')
+        return {}
+
+    dbClient = _connect_influx(host, port, ssl, dbUser, dbPswd)
+    
+    if not _exist_influx_database(dbClient, dbName):
+        print('-- CREATING DB IN INFLUX --')
+        #dbClient.create_database(dbName)
+    
+    print('-- SWITCHING DB IN INFLUX --')
+    #dbClient.switch_database(dbName)
+    
+    dataJSON = []
+    for row in dataIn:
+        dataJSON.append(_process_data_row(row, tblFlds, tblName))
+        
+    _PP_.pprint(dataJSON)
+    return 
+
+    if not dbClient.write_points(dataJSON):
+        raise Error("Failed to save data to Influx database '{}' on host '{}'!".format(dbName, host))
     
     
 def get_influx_data(db, dbuser, dbpswd, numRecs=1, first=True):
