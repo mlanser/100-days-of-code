@@ -116,5 +116,19 @@ Started on [Sunday June 14, 2020].
 * Totally re-doing SpeedTest to use the Python API instead.
 * Still working on Influx stuff.
 
+### R4D30 - 13JUL2020
+* Still working on Influx stuff.
+
+### R4D31 - 14JUL2020
+* Still working on Influx stuff.
+
+### R4D32 - 15JUL2020
+* Still working on Influx stuff.
+* Creating sep support for InfluxDB 1.x (using InfluxQL) and Influx Cloud (using Flux queries),
+* Fixed first/last records in SQLite historic data.
+
+
+
+
 
 

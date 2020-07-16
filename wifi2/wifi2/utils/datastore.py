@@ -2,7 +2,9 @@ import os
 import csv
 import json
 import sqlite3
-from influxdb import InfluxDBClient
+
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
 
 import pprint
 _PP_ = pprint.PrettyPrinter(indent=4)
@@ -20,26 +22,37 @@ def _process_data(inData, fldNames):
 
     return outData
 
+def _make_path(fname):
+    try:
+        path = os.path.dirname(os.path.abspath(fname))
+        if not os.path.exists(path):
+            os.makedirs(path)
 
+    except OSError as e:
+        raise OSError("Failed to create path '{}'!\n{}".format(path, e))
+
+        
 # =========================================================
 #                  C S V   F U N C T I O N S
 # =========================================================
-def save_csv_data(data, dbFName, dbFlds):
+def save_csv_data(data, dbFName, dbFlds, force=True):
     """Save data to CSV file.
     
     Args:
         data:    List with one or more data rows
         dbFName: CSV file name
         dbFlds:  Dict with field names (as keys) and data types
+        force:   If TRUE, CSV file will be created if it doesn't exist
 
     Raises:
         OSError: If unable to access or save data to CSV file.
     """
 
     if not os.path.exists(dbFName):
-        path = os.path.dirname(os.path.abspath(dbFName))
-        if not os.path.exists(path):
-            os.makedirs(path)
+        if force:
+            _make_path(dbFName)
+        else:
+            raise OSError("CSV data file '{}' does not exist!".format(dbFName))
     
     with open(dbFName, 'a+', newline='') as dbFile:
         dataWriter = csv.DictWriter(dbFile, dbFlds.keys(), extrasaction='ignore')
@@ -136,22 +149,25 @@ def _write_json(dbFName, data):
         dbFile.close()
     
     
-def save_json_data(data, dbFName, dbFlds):
+def save_json_data(data, dbFName, dbFlds, force=True):
     """Save data to JSON file.
 
     Args:
         data:    List with one or more data rows
         dbFName: JSON file name
         dbFlds:  Dict with field names (as keys) and data types
+        force:   If TRUE, JSON file will be created if it doesn't exist
 
     Raises:
         OSError: If unable to access or save data to JSON file.
     """
 
     if not os.path.exists(dbFName):
-        path = os.path.dirname(os.path.abspath(dbFName))
-        if not os.path.exists(path):
-            os.makedirs(path)
+        if force:
+            _make_path(dbFName)
+        else:
+            raise OSError("JSON data file '{}' does not exist!".format(dbFName))
+            
     try:
         oldData = _read_json(dbFName) if os.path.exists(dbFName) else None
         newData = _process_data(data, dbFlds.keys())
@@ -194,12 +210,13 @@ def get_json_data(dbFName, dbFlds, numRecs=1, first=True):
 # =========================================================
 #               S Q L I T E   F U N C T I O N S
 # =========================================================
-def _connect_sqlite(dbFName):
+def _connect_sqlite(dbFName, force=True):
     if not os.path.exists(dbFName):
-        path = os.path.dirname(os.path.abspath(dbFName))
-        if not os.path.exists(path):
-            os.makedirs(path)
-    
+        if force:
+            _make_path(dbFName)
+        else:
+            raise OSError("SQLite data file '{}' does not exist!".format(dbFName))
+            
     try:
         dbConn = sqlite3.connect(dbFName)
         
@@ -241,20 +258,18 @@ def _create_sqlite_table(dbCur, tblName, fldNamesWithTypes):
     dbCur.execute("CREATE TABLE IF NOT EXISTS {} ({})".format(tblName, flds))
 
 
-def save_sqlite_data(data, dbFName, tblFlds, tblName):
+def save_sqlite_data(data, dbFName, tblFlds, tblName, force=True):
     """Save data to SQLite database.
 
     Args:
-        data:     List with one or more data rows
-        dbFName:  File name for SQLite database
-        tblFlds:  Dict w DB field names and data types
-        tblName:  DB table name
-
-    Returns:
-        int:      Last row ID
+        data:    List with one or more data rows
+        dbFName: File name for SQLite database
+        tblFlds: Dict w DB field names and data types
+        tblName: DB table name
+        force:   If TRUE, SQLite file will be created if it doesn't exist
     """
 
-    dbConn = _connect_sqlite(dbFName)
+    dbConn = _connect_sqlite(dbFName, force)
     dbCur = dbConn.cursor()
 
     if not _exist_sqlite_table(dbCur, tblName):
@@ -273,7 +288,7 @@ def save_sqlite_data(data, dbFName, tblFlds, tblName):
     dbConn.close()
 
 
-def get_sqlite_data(dbFName, tblFlds, tblName, orderBy, numRecs=1, first=True):
+def get_sqlite_data(dbFName, tblFlds, tblName, orderBy=None, numRecs=1, first=True):
     """Retrieve 'numrec' data records from SQLite database.
 
     Args:
@@ -288,23 +303,44 @@ def get_sqlite_data(dbFName, tblFlds, tblName, orderBy, numRecs=1, first=True):
         list:     List of all records retrieved
     """
 
-    def _create_orderby_param(inStr):
+    def _flip_orderby(inStr, flip=False):
+        if inStr == 'ASC':
+            return 'ASC' if not flip else 'DESC'
+        else:
+            return 'DESC' if not flip else 'ASC'
+        
+        
+    def _create_orderby_param(inStr, flip=False):
         parts = inStr.split('|')
         
-        if len(parts) == 1:
-            return 'ORDER BY {}'.format(parts[0])
-        elif len(parts) >= 2:
-            return 'ORDER BY {} {}'.format(parts[0], parts[1].upper())
-        else:    
+        if len(parts) < 1:
             return ''
+        
+        outStr = 'ASC' if len(parts) == 1 else parts[1].upper()
+        return 'ORDER BY {} {}'.format(parts[0], _flip_orderby(outStr, flip))
     
     dbConn = _connect_sqlite(dbFName)
     dbCur = dbConn.cursor()
     
     fldNames = tblFlds.keys()
     flds = ','.join("{!s}".format(key) for key in fldNames)
-    sort = _create_orderby_param(list(fldNames)[0] if orderBy is None else orderBy)
-    dbCur.execute("SELECT {} FROM {} {} LIMIT {}".format(flds, tblName, sort, numRecs))
+    sortFld = list(fldNames)[0] if orderBy is None else orderBy
+        
+    if first:
+        dbCur.execute('SELECT {flds} FROM {tbl} {order} LIMIT {limit}'.format(
+            flds=flds,
+            tbl=tblName,
+            order=_create_orderby_param(sortFld),
+            limit=numRecs
+        ))
+    else:    
+        dbCur.execute('SELECT * FROM (SELECT {flds} FROM {tbl} {inner} LIMIT {limit}) {order}'.format(
+            flds=flds,
+            tbl=tblName,
+            inner=_create_orderby_param(sortFld, True),
+            limit=numRecs,
+            order=_create_orderby_param(sortFld)
+        ))
     
     dataRecords = dbCur.fetchall()
     dbConn.close()
@@ -319,17 +355,11 @@ def get_sqlite_data(dbFName, tblFlds, tblName, orderBy, numRecs=1, first=True):
 
     
 # =========================================================
-#             I N F L U X   F U N C T I O N S
+#           I N F L U X   1.X   F U N C T I O N S
 # =========================================================
-def _connect_influx(host, port, ssl, dbUser, dbPswd):
-    _PP_.pprint(host)
-    _PP_.pprint(port)
-    _PP_.pprint(ssl)
-    _PP_.pprint(dbUser)
-    _PP_.pprint(dbPswd)
-    return None
+def _connect_influx1x_server(url, dbUser, dbPswd):
     try:
-        dbClient = InfluxDBClient(host=host, port=port, username=dbUser, password=dbPswd, ssl=ssl, verify_ssl=ssl)
+        dbClient = InfluxDBClient(url=url, token=f'{dbUser}:{dbPswd}', org='-')
         
     except Error as e:
         raise OSError("Failed to connect to Influx database '{}'\n{}!".format(host, e))
@@ -337,55 +367,156 @@ def _connect_influx(host, port, ssl, dbUser, dbPswd):
     return dbClient
 
 
-def _exist_influx_database(dbClient, dbName):
-    dbList = dbClient.get_list_database()
+def _exist_influx1x_database(dbClient, dbName):
+    dbQry = dbClient.query_api()
+    return True    
+    #for item in dbClient.get_list_database():
+    #    if item['name'] == dbName:
+    #        return True
+
+    #return False
+
+
+def _process_influx1x_data_row(rowIn, tblFlds, tblName):
     
-    return (dbName in dbList.values())
+    point = Point(tblName)
 
-
-def save_influx_data(dataIn, host, port, ssl, dbUser, dbPswd, tblFlds, tblName, dbName):
+    point.time(rowIn['timestamp'])
     
-    def _process_data_row(rowIn, tblFlds, tblName):
-        _PP_.pprint(rowIn)
-        _PP_.pprint(tblFlds)
-        _PP_.pprint(tblName)
-        print('-- SAVING TO INFLUX --')
-        return {}
+    for key in tblFlds:
+        if tblFlds[key] == 'field':
+            point.field(key, rowIn[key])
+        elif tblFlds[key] == 'tag':
+            point.tag(key, rowIn[key])
+                
+    return point
 
-    dbClient = _connect_influx(host, port, ssl, dbUser, dbPswd)
+
+def save_influx1x_data(dataIn, url, dbUser, dbPswd, tblFlds, tblName, dbName, dbRetPol='autogen'):
+    
+    dbClient = _connect_influx_server(url, dbUser, dbPswd)
     
     if not _exist_influx_database(dbClient, dbName):
-        print('-- CREATING DB IN INFLUX --')
-        #dbClient.create_database(dbName)
+        raise OSError("Missing Influx database '{}'\n!".format(dbName))
     
-    print('-- SWITCHING DB IN INFLUX --')
-    #dbClient.switch_database(dbName)
+    dbWriter = dbClient.write_api()
     
-    dataJSON = []
+    bucket = f'{dbName}/{dbRetPol}'
+    dataPts = []
     for row in dataIn:
-        dataJSON.append(_process_data_row(row, tblFlds, tblName))
+        dataPts.append(_process_influx_data_row(row, tblFlds, tblName))
         
-    _PP_.pprint(dataJSON)
-    return 
-
-    if not dbClient.write_points(dataJSON):
-        raise Error("Failed to save data to Influx database '{}' on host '{}'!".format(dbName, host))
+    dbWriter.write(bucket=bucket, record=dataPts)
+    #if not dbClient.write_points(dataJSON):
+    #    raise Error("Failed to save data to Influx database '{}' on host '{}'!".format(dbName, host))
+    
+    dbClient.close()
     
     
-def get_influx_data(db, dbuser, dbpswd, numRecs=1, first=True):
-    dbConn = _connect_sqlite(dbFName)
-    dbCur = dbConn.cursor()
-
-    #dataRecords = _get_sqlite_data_rows(dbCur, tblName, tblFlds, orderBy, numRecs, first)
-    #dbConn.close()
-
-    data = []
-    for row in dataRecords:
-        # This creates a dictionary with keys from field name list, mapped against vaues from database.
-        data.append(dict(zip(tblFlds, row)))
-
-    return data
+def get_influx1x_data(url, dbUser, dbPswd, tblFlds, tblName, dbName, dbRetPol='autogen', numRecs=1, first=True):
+    
+    dbClient = _connect_influx_server(url, dbUser, dbPswd)
+    
+    if not _exist_influx_database(dbClient, dbName):
+        raise OSError("Missing Influx database '{}'\n!".format(dbName))
+    
+    dbReader = dbClient.query_api()
+    
+    bucket = f'{dbName}/{dbRetPol}'
+    dataQry = f'from(bucket: \"{bucket}\") |> range(start: -1h)'
+    
+    data = dbReader.query(dataQry)
+    #if not dbClient.write_points(dataJSON):
+    #    raise Error("Failed to save data to Influx database '{}' on host '{}'!".format(dbName, host))
+    
+    dbClient.close()
+    
     print(numRecs)
     print(first)
+    _PP_.pprint(data)
+    print('-- RETRIEVING FROM INFLUX -- {}:{}:{}'.format(db, dbuser, dbpswd))
+    return []
+
+
+# =========================================================
+#        I N F L U X   C L O U D   F U N C T I O N S
+# =========================================================
+def _connect_influxcloud_server(url, dbUser, dbPswd):
+    try:
+        dbClient = InfluxDBClient(url=url, token=f'{dbUser}:{dbPswd}', org='-')
+        
+    except Error as e:
+        raise OSError("Failed to connect to Influx database '{}'\n{}!".format(host, e))
+    
+    return dbClient
+
+
+def _exist_influxcloud_database(dbClient, dbName):
+    dbQry = dbClient.query_api()
+    return True    
+    #for item in dbClient.get_list_database():
+    #    if item['name'] == dbName:
+    #        return True
+
+    #return False
+
+
+def _process_influxcloud_data_row(rowIn, tblFlds, tblName):
+    
+    point = Point(tblName)
+
+    point.time(rowIn['timestamp'])
+    
+    for key in tblFlds:
+        if tblFlds[key] == 'field':
+            point.field(key, rowIn[key])
+        elif tblFlds[key] == 'tag':
+            point.tag(key, rowIn[key])
+                
+    return point
+
+
+def save_influxcloud_data(dataIn, url, dbUser, dbPswd, tblFlds, tblName, dbName, dbRetPol='autogen'):
+    
+    dbClient = _connect_influx_server(url, dbUser, dbPswd)
+    
+    if not _exist_influx_database(dbClient, dbName):
+        raise OSError("Missing Influx database '{}'\n!".format(dbName))
+    
+    dbWriter = dbClient.write_api()
+    
+    bucket = f'{dbName}/{dbRetPol}'
+    dataPts = []
+    for row in dataIn:
+        dataPts.append(_process_influx_data_row(row, tblFlds, tblName))
+        
+    dbWriter.write(bucket=bucket, record=dataPts)
+    #if not dbClient.write_points(dataJSON):
+    #    raise Error("Failed to save data to Influx database '{}' on host '{}'!".format(dbName, host))
+    
+    dbClient.close()
+    
+    
+def get_influxcloud_data(url, dbUser, dbPswd, tblFlds, tblName, dbName, dbRetPol='autogen', numRecs=1, first=True):
+    
+    dbClient = _connect_influx_server(url, dbUser, dbPswd)
+    
+    if not _exist_influx_database(dbClient, dbName):
+        raise OSError("Missing Influx database '{}'\n!".format(dbName))
+    
+    dbReader = dbClient.query_api()
+    
+    bucket = f'{dbName}/{dbRetPol}'
+    dataQry = f'from(bucket: \"{bucket}\") |> range(start: -1h)'
+    
+    data = dbReader.query(dataQry)
+    #if not dbClient.write_points(dataJSON):
+    #    raise Error("Failed to save data to Influx database '{}' on host '{}'!".format(dbName, host))
+    
+    dbClient.close()
+    
+    print(numRecs)
+    print(first)
+    _PP_.pprint(data)
     print('-- RETRIEVING FROM INFLUX -- {}:{}:{}'.format(db, dbuser, dbpswd))
     return []

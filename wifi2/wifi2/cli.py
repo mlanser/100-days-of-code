@@ -3,7 +3,7 @@ import os
 import re
 import click
 import time
-import dateutil
+from dateutil import parser
 import pytz
 
 from pathlib import Path
@@ -67,7 +67,7 @@ def current_weather(location, api_key='OWM_API_KEY'):
 def _data_formatter(data, rowNum=0, isRaw=False, rateUnit=APP_BITS):
     
     def _date_maker(timestamp, timezone=None, fmtstr=None):
-        dateOrig = dateutil.parser.isoparse(timestamp)
+        dateOrig = parser.isoparse(timestamp)
         dateFinal = dateOrig if timezone is None else dateOrig.astimezone(pytz.timezone(timezone)) 
         
         return dateFinal.strftime('%m/%d/%y %H:%M' if fmtstr is None else fmtstr)
@@ -96,8 +96,8 @@ def _data_formatter(data, rowNum=0, isRaw=False, rateUnit=APP_BITS):
         )
 
 
-def show_speed_data(data, isRaw=False, rateUnit=APP_BITS):
-    """Format and display SpeedTest data.
+def show_speed_data_summary(data, isRaw=False, rateUnit=APP_BITS):
+    """Format and display summary SpeedTest data.
     
     Args:
         data:     Individual data row/record as list.
@@ -108,7 +108,7 @@ def show_speed_data(data, isRaw=False, rateUnit=APP_BITS):
     # Mbit/s or MB/s
     rateUnitLabel = 'Mbit/s' if rateUnit.lower() != 'bytes' else 'MB/s'
     
-    template = "DATE:     {} (UTC)\n          {} (local)\n\n"
+    template = "DATE:    {} (UTC)\n         {} (local)\n\n"
     if isRaw:
         template += "PING: {:8.3f} ms\nDOWN: {:8.2f} " + rateUnitLabel + "\nUP:   {:8.2f} " + rateUnitLabel
     else:
@@ -116,6 +116,54 @@ def show_speed_data(data, isRaw=False, rateUnit=APP_BITS):
         
     click.echo(template.format(*_data_formatter(data, 0, isRaw, rateUnit)))
     click.echo()
+        
+
+def show_speed_data_details(data, isRaw=False, rateUnit=APP_BITS):
+    """Format and display detailed SpeedTest data.
+    
+    Args:
+        data:     Individual data row/record as list.
+        isRaw:    If TRUE, data is is 'raw' format.
+        rateUnit: MB/s if 'bytes', else Mbit/s
+    """
+
+    # Mbit/s or MB/s
+    rateUnitLabel = 'Mbit/s' if rateUnit.lower() != 'bytes' else 'MB/s'
+    show_speed_data_summary(data, isRaw=isRaw, rateUnit=rateUnit)
+    
+    #click.echo(template.format(*_data_formatter(data, 0, isRaw, rateUnit)))
+    _PP_.pprint(data)
+    # {   'bytes_received': 366199597,
+    #     'bytes_sent': 37036032,
+    #     'client': {   'country': 'US',
+    #                   'ip': '167.88.61.92',
+    #                   'isp': 'GTHost',
+    #                   'ispdlavg': '0',
+    #                   'isprating': '3.7',
+    #                   'ispulavg': '0',
+    #                   'lat': '37.3931',
+    #                   'loggedin': '0',
+    #                   'lon': '-121.962',
+    #                   'rating': '0'},
+    #     'download': 292887701.1503456,
+    #     'location': 'CodeAnywhere Test Server',
+    #     'locationTZ': 'America/New_York',
+    #     'ping': 5.056,
+    #     'server': {   'cc': 'US',
+    #                   'country': 'United States',
+    #                   'd': 9.962686532913219,
+    #                   'host': 'speedtest.ridgewireless.net:8080',
+    #                   'id': '12818',
+    #                   'lat': '37.3230',
+    #                   'latency': 5.056,
+    #                   'lon': '-122.0322',
+    #                   'name': 'Cupertino, CA',
+    #                   'sponsor': 'Ridge Wireless',
+    #                   'url': 'http://speedtest.ridgewireless.net:8080/speedtest/upload.php'},
+    #     'share': None,
+    #     'timestamp': '2020-07-15T17:08:55.735084Z',
+    #     'upload': 28967314.988596343}    
+    click.echo("-----------------------------\n")
         
 
 def show_speed_data_table(data, showRowNum=True, isRaw=False, rateUnit=APP_BITS):
@@ -136,7 +184,7 @@ def show_speed_data_table(data, showRowNum=True, isRaw=False, rateUnit=APP_BITS)
         #           |     |                  |                  |          |          |          |
         hdr1      = "     |              Date/Time              |          |          |          "
         hdr2      = "     |        UTC       |   At Location    |   PING   |   DOWN   |    UP    "
-        hdr3      = "  #  |  MM/DD/YY HH:MM  |  MM/DD/YY HH:MM  |    ms    |  {0:6s}  |  {0:6s}  ".format(rateUnitLabel)
+        hdr3      = "  #  |  MM/DD/YY HH:MM  |  MM/DD/YY HH:MM  |    ms    |  {0:^6s}  |  {0:^6s}  ".format(rateUnitLabel)
         divider   = "-----|------------------|------------------|----------|----------|----------"
         
         col1 = " {:>3s} |  {!s:14s}  |  {!s:14s}  |" if isRaw else " {:>3s} |  {:14s}  |  {:14s}  |"
@@ -145,7 +193,7 @@ def show_speed_data_table(data, showRowNum=True, isRaw=False, rateUnit=APP_BITS)
         #           |                  |                  |          |          |          |
         hdr1      = "              Date/Time              |          |          |          "
         hdr2      = "        UTC       |    At Location   |   PING   |   DOWN   |    UP    "
-        hdr3      = "  MM/DD/YY HH:MM  |  MM/DD/YY HH:MM  |    ms    |  {0:6s}  |  {0:6s}  ".format(rateUnitLabel)
+        hdr3      = "  MM/DD/YY HH:MM  |  MM/DD/YY HH:MM  |    ms    |  {0:^6s}  |  {0:^6s}  ".format(rateUnitLabel)
         divider   = "------------------|------------------|----------|----------|----------"
         
         col1 = "  {!s:14s}  |  {!s:14s}  |" if isRaw else "  {:14s}  |  {:14s}  |"
@@ -295,9 +343,14 @@ def creds(ctx, how: str, filename: str = ''):
     help='Display speed test data on STDOUT or ePaper screen.',
 )
 @click.option(
-    '--save/--no-save',
+    '--save/--no-save', 'save',
     default=True,
     help='Save speed test data to data storage.',
+)
+@click.option(
+    '--summary/--details', 'summary_only',
+    default=True,
+    help='Show summary or details from SpeedTest run.',
 )
 @click.option(
     '--count', 'cntr',
@@ -315,7 +368,7 @@ def creds(ctx, how: str, filename: str = ''):
     help="Show 'first' or 'last' 'count' number of previously saved speed tests.",
 )
 @click.pass_context
-def speedtest(ctx, display: str, save: bool, cntr: int, history: bool, first: bool):
+def speedtest(ctx, display: str, save: bool, summary_only: bool, cntr: int, history: bool, first: bool):
     """Get speed test data.
 
     \b
@@ -372,7 +425,11 @@ def speedtest(ctx, display: str, save: bool, cntr: int, history: bool, first: bo
 
             if display.lower() == 'stdout':
                 click.echo('-- Internet Speed Test {} of {} --'.format(str(i + 1), str(cntr)))
-                show_speed_data(data[i], isRaw=True, rateUnit=unit)
+                
+                if summary_only:
+                    show_speed_data_summary(data[i], isRaw=True, rateUnit=unit)
+                else:
+                    show_speed_data_details(data[i], isRaw=True, rateUnit=unit)
 
             elif display.lower() == 'epaper':
                 #

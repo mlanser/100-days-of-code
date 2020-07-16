@@ -3,10 +3,11 @@ import click
 import configparser
 #from configparser import ConfigParser, ExtendedInterpolation, InterpolationMissingOptionError
 
-_CSV_    = 'csv'
-_JSON_   = 'json'
-_SQLite_ = 'sqlite'
-_Influx_ = 'influx'
+_CSV_         = 'csv'
+_JSON_        = 'json'
+_SQLite_      = 'sqlite'
+_Influx1x_    = 'influx1x'
+_InfluxCloud_ = 'influxcloud'
 
 import pprint
 _PP_ = pprint.PrettyPrinter(indent=4)
@@ -117,27 +118,31 @@ def _validate_data_settings(settings):
 # location = <some location name>       - name of location where test computer is located
 # locationTZ = <TZ name>                - Time zone at locatiomn (e.g. 'America/New York') 
 #
-# storage = CSV|JSON|SQLite|Influx      - data storage type
+# storage = CSV|JSON|SQLite|...         - data storage type
+#           Influx1x|InfluxCloud
+#
 # host = <hostname or file path>        - data storage host. If file-based (i.e. CSV, JSON, SQLite),
 #                                         then this is a path/filename)
 #   Ex:     ~/speedtest.csv
 #           ~/speedtest.json
 #           ~/wifi2.sqlite              - SQLite file can hold several tables
-#           localhost                   - Influx db server can hold several databases
+#           http://localhost:8086       - Influx db server can hold several databases. Should also
+#                                         include port and protocal (http/https)
 #
-# port = <db server port>               - Used for InfluxDB
-# ssl = yes|no                          - Used for InfluxDB
-# dbuser = <db user w proper access>    - Used for InfluxDB
-# dbpswd = <db user password>           - Used for InfluxDB
-# dbname = <db name>                    - Used for SQLite and Influx
-# dbtable = <db table name>             - Used for SQLite and Influx
+# token = <token instead of user pswd>  - Used for InfluxDB Cloud
+# dbuser = <db user w proper access>    - Used for InfluxDB 1.x and Cloud
+# dbpswd = <db user password>           - Used for InfluxDB 1.x
+# dbtable = <db table name>             - Used for SQLite and InfluxDB 1.x
+# dbname = <db name>                    - Used for SQLite and all InfluxDB 
+# dbretpol = <db retention policy>      - Used for InfluxDB Cloud
 #
 def _get_speedtest_settings(ctxGlobals):
-    port    = None
-    dbUser  = None
-    dbPswd  = None
-    dbName  = 'Wifi2'
-    dbTable = 'SpeedTest'
+    dbUser   = None
+    dbPswd   = None
+    dbToken  = None             # May be used instead of user pswd
+    dbTable  = 'SpeedTest'
+    dbName   = 'WIFI2_data'
+    dbRetPol = 'autogen'        # Default set by InfluxDB
 
     count = click.prompt(
         "Enter default for number of test cycle runs:",
@@ -181,7 +186,9 @@ def _get_speedtest_settings(ctxGlobals):
     
     storage = click.prompt(
         "Enter data storage type", 
-        type=click.Choice(['CSV', 'JSON', 'SQLite', 'Influx'], case_sensitive=False)
+        type=click.Choice(['CSV', 'JSON', 'SQLite', 'Influx1x', 'InfluxCloud'], case_sensitive=False),
+        default='SQLite',
+        show_default=True,
     )
     if storage.lower() == _CSV_:
         host = click.prompt(
@@ -209,26 +216,50 @@ def _get_speedtest_settings(ctxGlobals):
             default=dbtable,
             show_default=True,
         )
-    elif storage.lower() == _Influx_:
-        host = click.prompt("Enter database host name")
-        port = click.prompt("Enter database host port", default='')
-        ssl = click.prompt(
-            "Use SSL", 
-            type=click.Choice(['yes', 'no'], case_sensitive=False),
-            default='no',
+    elif storage.lower() == _Influx1x_:
+        host = click.prompt("Enter database URL (protocal, host, and port)",
+            default='http://localhost:8086',
             show_default=True,
         )
         dbUser = click.prompt("Enter database user name")
         dbPswd = click.prompt("Enter database user password", default='', hide_input=True)
         dbToken = click.prompt("Enter JWT token", default='')
+        dbTable = click.prompt(
+            "Enter name of database table",
+            default=dbTable,
+            show_default=True,
+        )
         dbName = click.prompt(
             "Enter name of database",
             default=dbName,
             show_default=True,
         )
+        dbRetPol = click.prompt(
+            "Enter name of database retention policy",
+            default=dbRetPol,
+            show_default=True,
+        )
+    elif storage.lower() == _InfluxCloud_:
+        host = click.prompt("Enter database URL (protocal, host, and port)",
+            default='http://localhost:8086',
+            show_default=True,
+        )
+        dbUser = click.prompt("Enter database user name")
+        dbPswd = click.prompt("Enter database user password", default='', hide_input=True)
+        dbToken = click.prompt("Enter JWT token", default='')
         dbTable = click.prompt(
             "Enter name of database table",
             default=dbTable,
+            show_default=True,
+        )
+        dbName = click.prompt(
+            "Enter name of database",
+            default=dbName,
+            show_default=True,
+        )
+        dbRetPol = click.prompt(
+            "Enter name of database retention policy",
+            default=dbRetPol,
             show_default=True,
         )
     else:
@@ -244,13 +275,13 @@ def _get_speedtest_settings(ctxGlobals):
             'location': location,
             'locationTZ': locationTZ,
             'host': host,
-            'port': port,
             'ssl': False if ssl.lower() != 'yes' else True, 
             'dbuser': dbUser,       # Should NOT be 'root' account in PROD
             'dbpswd': dbPswd,       # @TODO NEED TO ENCRYPT SOMEHOW!!!
             'dbtoken': dbToken,     # Preferred!
-            'dbname': dbName,
             'dbtable': dbTable,
+            'dbname': dbName,
+            'dbretpol': dbRetPol,
             }
         }
     
@@ -507,19 +538,23 @@ def show_settings(ctxGlobals, section):
         # location = <some location name>       - name of location where test computer is located
         # locationTZ = <TZ name>                - Time zone at locatiomn (e.g. 'America/New York') 
         #
-        # storage = CSV|JSON|SQLite|Influx      - data storage type
+        # storage = CSV|JSON|SQLite|...         - data storage type
+        #           Influx1x|InfluxCloud
+        #
         # host = <hostname or file path>        - data storage host. If file-based (i.e. CSV, JSON, SQLite),
         #                                         then this is a path/filename)
         #   Ex:     ~/speedtest.csv
         #           ~/speedtest.json
         #           ~/wifi2.sqlite              - SQLite file can hold several tables
-        #           localhost                   - Influx db server can hold several databases
+        #           http://localhost:8086       - Influx db server can hold several databases. Should also
+        #                                         include port and protocal (http/https)
         #
-        # port = <db server port>               - Used for InfluxDB
-        # dbuser = <db user w proper access>    - Used for InfluxDB
-        # dbpswd = <db user password>           - Used for InfluxDB
-        # dbname = <db name>                    - Used for InfluxDB
-        # dbtable = <db table name>             - Used for SQLite and Influx
+        # token = <token instead of user pswd>  - Used for InfluxDB Cloud
+        # dbuser = <db user w proper access>    - Used for InfluxDB 1.x and Cloud
+        # dbpswd = <db user password>           - Used for InfluxDB 1.x
+        # dbtable = <db table name>             - Used for SQLite and InfluxDB 1.x
+        # dbname = <db name>                    - Used for SQLite and all InfluxDB 
+        # dbretpol = <db retention policy>      - Used for InfluxDB Cloud
         #
         click.echo("SpeedTest Settings")
         click.echo("  Test Run Count:   {}".format(_get_option_val(settings, 'speedtest', 'count')))
@@ -531,11 +566,12 @@ def show_settings(ctxGlobals, section):
         click.echo("  Location TZ:      {}".format(_get_option_val(settings, 'speedtest', 'locationTZ')))
         click.echo("  DB Storage Type:  {}".format(_get_option_val(settings, 'speedtest', 'storage')))
         click.echo("  DB Host:          {}".format(_get_option_val(settings, 'speedtest', 'host')))
-        click.echo("  DB Port #:        {}".format(_get_option_val(settings, 'speedtest', 'port')))
+        click.echo("  DB Token:         {}".format(_get_option_val(settings, 'speedtest', 'token')))
         click.echo("  DB User:          {}".format(_get_option_val(settings, 'speedtest', 'dbuser')))
         click.echo("  DB User Password: {}".format(_get_option_val(settings, 'speedtest', 'dbpswd')))
-        click.echo("  DB Name:          {}".format(_get_option_val(settings, 'speedtest', 'dbname')))
         click.echo("  DB Table:         {}".format(_get_option_val(settings, 'speedtest', 'dbtable')))
+        click.echo("  DB Name:          {}".format(_get_option_val(settings, 'speedtest', 'dbname')))
+        click.echo("  DB Ret Policy:    {}".format(_get_option_val(settings, 'speedtest', 'dbretpol')))
         
         click.echo("\nSome Other Test Settings")
         click.echo("  CLI URI:          {}".format(_get_option_val(settings, 'speedtest', 'uri')))
