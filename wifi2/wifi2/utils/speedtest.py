@@ -125,19 +125,17 @@ def get_speed_data(settings, numRecs, first=True):
         return get_json_data(settings.get('host'), _DB_FLDS_['raw'], numRecs, first)
         
     elif settings.get('storage').lower() == 'sqlite':
-        #_PP_.pprint(_DB_FLDS_)
-        #_PP_.pprint(_DB_TABLE_)
-        #_PP_.pprint(_DB_ORDER_)
-        #      get_sqlite_data(dbFName,             tblFlds,           tblName,                             orderBy=None, numRecs=1, first=True):
         return get_sqlite_data(settings.get('host'), _DB_FLDS_['raw'], settings.get('dbtable', _DB_TABLE_), _DB_ORDER_, numRecs, first)
         
     elif settings.get('storage') == 'Influx1x':
-        return get_influx_data(settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_), 
-                               settings.get('dbname', _DB_NAME_), settings.get('dbretpol', _DB_RETPOL_), 
-                               settings.get('dbuser'), settings.get('dbpswd'),
+        return get_influx1x_data(settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_),  
+                               settings.get('dbname', _DB_NAME_), settings.get('dbuser'), settings.get('dbpswd'),
                                numRecs, first
                               )
         
+    #_PP_.pprint(_DB_FLDS_)
+    #_PP_.pprint(_DB_TABLE_)
+    #_PP_.pprint(_DB_ORDER_)
     #elif settings.get('storage') == 'InfluxCloud':
     #    return get_influx_data(settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_), 
     #                           settings.get('dbname', _DB_NAME_), settings.get('dbretpol', _DB_RETPOL_), 

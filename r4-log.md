@@ -127,6 +127,8 @@ Started on [Sunday June 14, 2020].
 * Creating sep support for InfluxDB 1.x (using InfluxQL) and Influx Cloud (using Flux queries),
 * Fixed first/last records in SQLite historic data.
 
+### R4D33 - 16JUL2020
+* Almost finished InfluxDB 1.x integration.
 
 
 

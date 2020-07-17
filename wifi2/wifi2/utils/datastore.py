@@ -3,7 +3,12 @@ import csv
 import json
 import sqlite3
 
-from influxdb_client import InfluxDBClient, Point
+from urllib.parse import urlparse, urlsplit
+
+from influxdb import InfluxDBClient as InfluxDBv1
+from influxdb.exceptions import InfluxDBClientError as InfluxDBv1ClientError
+
+from influxdb_client import InfluxDBClient as InfluxDBv2, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 import pprint
@@ -357,78 +362,93 @@ def get_sqlite_data(dbFName, tblFlds, tblName, orderBy=None, numRecs=1, first=Tr
 # =========================================================
 #           I N F L U X   1.X   F U N C T I O N S
 # =========================================================
-def _connect_influx1x_server(url, dbUser, dbPswd):
+def _connect_influx1x_server(url, dbUser, dbPswd, dbName):
+    urlParts = urlsplit(url)
+    
     try:
-        dbClient = InfluxDBClient(url=url, token=f'{dbUser}:{dbPswd}', org='-')
+        dbClient = InfluxDBv1(urlParts.hostname, urlParts.port, dbUser, dbPswd, dbName)
         
-    except Error as e:
+    except InfluxDBv1ClientError as e:
         raise OSError("Failed to connect to Influx database '{}'\n{}!".format(host, e))
     
     return dbClient
 
 
 def _exist_influx1x_database(dbClient, dbName):
-    dbQry = dbClient.query_api()
-    return True    
-    #for item in dbClient.get_list_database():
-    #    if item['name'] == dbName:
-    #        return True
+    for item in dbClient.get_list_database():
+        if item['name'] == dbName:
+            return True
 
-    #return False
+    return False
 
 
 def _process_influx1x_data_row(rowIn, tblFlds, tblName):
-    
-    point = Point(tblName)
-
-    point.time(rowIn['timestamp'])
+    point = {'measurement': tblName, 'time': rowIn['timestamp'], 'tags': {}, 'fields': {}}
     
     for key in tblFlds:
         if tblFlds[key] == 'field':
-            point.field(key, rowIn[key])
+            point['fields'].update({key:rowIn[key]})
         elif tblFlds[key] == 'tag':
-            point.tag(key, rowIn[key])
-                
+            point['tags'].update({key:rowIn[key]})
+    
     return point
 
 
-def save_influx1x_data(dataIn, url, dbUser, dbPswd, tblFlds, tblName, dbName, dbRetPol='autogen'):
+def save_influx1x_data(dataIn, url, tblFlds, tblName, dbName, dbUser, dbPswd):
     
-    dbClient = _connect_influx_server(url, dbUser, dbPswd)
+    dbClient = _connect_influx1x_server(url, dbUser, dbPswd, dbName)
     
-    if not _exist_influx_database(dbClient, dbName):
+    if not _exist_influx1x_database(dbClient, dbName):
         raise OSError("Missing Influx database '{}'\n!".format(dbName))
     
-    dbWriter = dbClient.write_api()
-    
-    bucket = f'{dbName}/{dbRetPol}'
     dataPts = []
     for row in dataIn:
-        dataPts.append(_process_influx_data_row(row, tblFlds, tblName))
-        
-    dbWriter.write(bucket=bucket, record=dataPts)
-    #if not dbClient.write_points(dataJSON):
-    #    raise Error("Failed to save data to Influx database '{}' on host '{}'!".format(dbName, host))
+        dataPts.append(_process_influx1x_data_row(row, tblFlds, tblName))
+    
+    if not dbClient.write_points(dataPts):
+        raise OSError("Failed to save data to Influx database '{}' on host '{}'!".format(dbName, host))
     
     dbClient.close()
     
     
-def get_influx1x_data(url, dbUser, dbPswd, tblFlds, tblName, dbName, dbRetPol='autogen', numRecs=1, first=True):
+def get_influx1x_data(url, tblFlds, tblName, dbName, dbUser, dbPswd, numRecs=1, first=True):
     
-    dbClient = _connect_influx_server(url, dbUser, dbPswd)
+    dbClient = _connect_influx1x_server(url, dbUser, dbPswd, dbName)
     
-    if not _exist_influx_database(dbClient, dbName):
+    if not _exist_influx1x_database(dbClient, dbName):
         raise OSError("Missing Influx database '{}'\n!".format(dbName))
     
-    dbReader = dbClient.query_api()
     
-    bucket = f'{dbName}/{dbRetPol}'
-    dataQry = f'from(bucket: \"{bucket}\") |> range(start: -1h)'
+    fldNames = tblFlds.keys()
+    flds = ','.join("{!s}".format(key) for key in fldNames)
+    #sortFld = list(fldNames)[0] if orderBy is None else orderBy
+        
+    #query = 'select Float_value from cpu_load_short;'
+    #query_where = 'select Int_value from cpu_load_short where host=$host;'
+    #bind_params = {'host': 'server01'}
+    print('SELECT * FROM (SELECT {flds} FROM {tbl} ORDER BY "time" DESC LIMIT {limit}) ORDER BY "time" ASC'.format(flds=flds, tbl=tblName, limit=numRecs))
+    dbClient.close()
+    return []
     
-    data = dbReader.query(dataQry)
-    #if not dbClient.write_points(dataJSON):
-    #    raise Error("Failed to save data to Influx database '{}' on host '{}'!".format(dbName, host))
+    #if first:
+    #    dbClient.execute('SELECT {flds} FROM {tbl} ORDER BY "time" ASC LIMIT {limit}'.format(
+    #                  flds=flds, tbl=tblName, limit=numRecs)
+    #                 )
+    #else:    
+    #    dbClient.execute('SELECT * FROM (SELECT {flds} FROM {tbl} ORDER BY "time" DESC LIMIT {limit}) ORDER BY "time" ASC'.format(
+    #                  flds=flds, tbl=tblName, limit=numRecs)
+    #                 )
     
+    # dataRecords = dbCur.fetchall()
+    # dbConn.close()
+
+    data = []
+    for row in dataRecords:
+        # Create dictionary with keys from field name 
+        # list, mapped against vaues from database.
+        data.append(dict(zip(tblFlds.keys(), row)))
+
+    return data
     dbClient.close()
     
     print(numRecs)
