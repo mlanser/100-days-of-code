@@ -18,14 +18,15 @@ _PP_ = pprint.PrettyPrinter(indent=4)
 # =========================================================
 #             G E N E R I C   F U N C T I O N S
 # =========================================================
-def _process_data(inData, fldNames):
-    outData = []
+def _process_data(dataIn, fldNames):
+    dataOut = []
 
-    for row in inData:
+    for row in dataIn:
         # Filter each row to only hold approved keys using dictionary comprehension
-        outData.append({key: row[key] for key in fldNames})
+        dataOut.append({key: row[key] for key in fldNames})
 
     return outData
+
 
 def _make_path(fname):
     try:
@@ -36,7 +37,7 @@ def _make_path(fname):
     except OSError as e:
         raise OSError("Failed to create path '{}'!\n{}".format(path, e))
 
-        
+
 # =========================================================
 #                  C S V   F U N C T I O N S
 # =========================================================
@@ -394,6 +395,14 @@ def _process_influx1x_data_row(rowIn, tblFlds, tblName):
     return point
 
 
+def _resort_influx1x_records(dataIn):
+    
+    def _get_key_val(item):
+        return item.get('timestamp')
+
+    return sorted(dataIn, key=_get_key_val)
+
+
 def save_influx1x_data(dataIn, url, tblFlds, tblName, dbName, dbUser, dbPswd):
     
     dbClient = _connect_influx1x_server(url, dbUser, dbPswd, dbName)
@@ -418,44 +427,26 @@ def get_influx1x_data(url, tblFlds, tblName, dbName, dbUser, dbPswd, numRecs=1, 
     if not _exist_influx1x_database(dbClient, dbName):
         raise OSError("Missing Influx database '{}'\n!".format(dbName))
     
-    
-    fldNames = tblFlds.keys()
-    flds = ','.join("{!s}".format(key) for key in fldNames)
-    #sortFld = list(fldNames)[0] if orderBy is None else orderBy
-        
-    #query = 'select Float_value from cpu_load_short;'
-    #query_where = 'select Int_value from cpu_load_short where host=$host;'
-    #bind_params = {'host': 'server01'}
-    print('SELECT * FROM (SELECT {flds} FROM {tbl} ORDER BY "time" DESC LIMIT {limit}) ORDER BY "time" ASC'.format(flds=flds, tbl=tblName, limit=numRecs))
-    dbClient.close()
-    return []
-    
-    #if first:
-    #    dbClient.execute('SELECT {flds} FROM {tbl} ORDER BY "time" ASC LIMIT {limit}'.format(
-    #                  flds=flds, tbl=tblName, limit=numRecs)
-    #                 )
-    #else:    
-    #    dbClient.execute('SELECT * FROM (SELECT {flds} FROM {tbl} ORDER BY "time" DESC LIMIT {limit}) ORDER BY "time" ASC'.format(
-    #                  flds=flds, tbl=tblName, limit=numRecs)
-    #                 )
-    
-    # dataRecords = dbCur.fetchall()
-    # dbConn.close()
+    # Get fields and tags, and remember to rename 'time' to 'timestamp' 
+    # as InfluxDB uses 'time' as record ID in the timeseries database
+    flds = ','.join("{!s}".format(key) for key in tblFlds.keys()).replace('timestamp', 'time as timestamp')
 
+    qryResult = dbClient.query('SELECT {flds} FROM {tbl} ORDER BY "time" {sort} LIMIT {limit}'.format(
+                               flds=flds, 
+                               tbl=tblName, 
+                               sort='ASC' if first else 'DESC', 
+                               limit=numRecs)
+                              )
     data = []
-    for row in dataRecords:
+    dataRecs = qryResult.raw['series'][0]['values']         # InfluxQL query returns complex result set
+    keys = qryResult.raw['series'][0]['columns']            # where we need to pull out specific items
+    for row in dataRecs:
         # Create dictionary with keys from field name 
         # list, mapped against vaues from database.
-        data.append(dict(zip(tblFlds.keys(), row)))
-
-    return data
-    dbClient.close()
+        data.append(dict(zip(keys, row)))
     
-    print(numRecs)
-    print(first)
-    _PP_.pprint(data)
-    print('-- RETRIEVING FROM INFLUX -- {}:{}:{}'.format(db, dbuser, dbpswd))
-    return []
+    dbClient.close()
+    return data if first else _resort_influx1x_records(data)
 
 
 # =========================================================

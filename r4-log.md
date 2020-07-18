@@ -130,6 +130,10 @@ Started on [Sunday June 14, 2020].
 ### R4D33 - 16JUL2020
 * Almost finished InfluxDB 1.x integration.
 
+### R4D33 - 17JUL2020
+* Finished InfluxDB 1.x integration and fixed problem w returning 'last' N records.
+
+
 
 
 
