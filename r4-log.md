@@ -133,8 +133,5 @@ Started on [Sunday June 14, 2020].
 ### R4D33 - 17JUL2020
 * Finished InfluxDB 1.x integration and fixed problem w returning 'last' N records.
 
-
-
-
-
-
+### R4D33 - 18JUL2020
+* Starting integration with InfluxDB Cloud.

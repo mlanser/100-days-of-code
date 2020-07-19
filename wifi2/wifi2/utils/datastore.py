@@ -3,12 +3,13 @@ import csv
 import json
 import sqlite3
 
+from datetime import datetime
 from urllib.parse import urlparse, urlsplit
 
 from influxdb import InfluxDBClient as InfluxDBv1
 from influxdb.exceptions import InfluxDBClientError as InfluxDBv1ClientError
 
-from influxdb_client import InfluxDBClient as InfluxDBv2, Point
+from influxdb_client import InfluxDBClient as InfluxDBv2, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 import pprint
@@ -452,9 +453,9 @@ def get_influx1x_data(url, tblFlds, tblName, dbName, dbUser, dbPswd, numRecs=1, 
 # =========================================================
 #        I N F L U X   C L O U D   F U N C T I O N S
 # =========================================================
-def _connect_influxcloud_server(url, dbUser, dbPswd):
+def _connect_influxcloud_server(url, dbToken):
     try:
-        dbClient = InfluxDBClient(url=url, token=f'{dbUser}:{dbPswd}', org='-')
+        dbClient = InfluxDBv2(url=url, token=dbToken)
         
     except Error as e:
         raise OSError("Failed to connect to Influx database '{}'\n{}!".format(host, e))
@@ -462,21 +463,11 @@ def _connect_influxcloud_server(url, dbUser, dbPswd):
     return dbClient
 
 
-def _exist_influxcloud_database(dbClient, dbName):
-    dbQry = dbClient.query_api()
-    return True    
-    #for item in dbClient.get_list_database():
-    #    if item['name'] == dbName:
-    #        return True
-
-    #return False
-
-
 def _process_influxcloud_data_row(rowIn, tblFlds, tblName):
     
     point = Point(tblName)
 
-    point.time(rowIn['timestamp'])
+    point.time(rowIn['timestamp'], WritePrecision.NS)
     
     for key in tblFlds:
         if tblFlds[key] == 'field':
@@ -487,47 +478,49 @@ def _process_influxcloud_data_row(rowIn, tblFlds, tblName):
     return point
 
 
-def save_influxcloud_data(dataIn, url, dbUser, dbPswd, tblFlds, tblName, dbName, dbRetPol='autogen'):
+def save_influxcloud_data(dataIn, url, tblFlds, tblName, dbBucket=None, dbOrgID=None, dbToken=None):
     
-    dbClient = _connect_influx_server(url, dbUser, dbPswd)
+    if dbToken is None:
+        raise ValueError("Missing token!")
+        
+    if dbOrgID is None:
+        raise ValueError("Missing org ID!")
+        
+    if dbBucket is None:
+        raise ValueError("Missing bucket name/ID!")
+        
+    dbClient = _connect_influxcloud_server(url, dbToken)
     
-    if not _exist_influx_database(dbClient, dbName):
-        raise OSError("Missing Influx database '{}'\n!".format(dbName))
+    dbWriter = dbClient.write_api(write_options=SYNCHRONOUS)
     
-    dbWriter = dbClient.write_api()
-    
-    bucket = f'{dbName}/{dbRetPol}'
     dataPts = []
     for row in dataIn:
-        dataPts.append(_process_influx_data_row(row, tblFlds, tblName))
+        dataPts.append(_process_influxcloud_data_row(row, tblFlds, tblName))
         
-    dbWriter.write(bucket=bucket, record=dataPts)
-    #if not dbClient.write_points(dataJSON):
-    #    raise Error("Failed to save data to Influx database '{}' on host '{}'!".format(dbName, host))
+    dbWriter.write(dbBucket, dbOrgID, dataPts)
     
     dbClient.close()
     
+
+def get_influxcloud_data(url, tblFlds, tblName, dbBucket=None, dbOrgID=None, dbToken=None, numRecs=1, first=True):
     
-def get_influxcloud_data(url, dbUser, dbPswd, tblFlds, tblName, dbName, dbRetPol='autogen', numRecs=1, first=True):
+    if dbToken is None:
+        raise ValueError("Missing token!")
+        
+    if dbOrgID is None:
+        raise ValueError("Missing org ID!")
+        
+    if dbBucket is None:
+        raise ValueError("Missing bucket name/ID!")
+        
+    dbClient = _connect_influxcloud_server(url, dbToken)
     
-    dbClient = _connect_influx_server(url, dbUser, dbPswd)
-    
-    if not _exist_influx_database(dbClient, dbName):
-        raise OSError("Missing Influx database '{}'\n!".format(dbName))
-    
-    dbReader = dbClient.query_api()
-    
-    bucket = f'{dbName}/{dbRetPol}'
-    dataQry = f'from(bucket: \"{bucket}\") |> range(start: -1h)'
-    
-    data = dbReader.query(dataQry)
-    #if not dbClient.write_points(dataJSON):
-    #    raise Error("Failed to save data to Influx database '{}' on host '{}'!".format(dbName, host))
-    
-    dbClient.close()
+    query = f'from(bucket: \"{dbBucket}\") |> range(start: -6h)'
+    data = dbClient.query_api().query(query, org=dbOrgID)
     
     print(numRecs)
     print(first)
     _PP_.pprint(data)
-    print('-- RETRIEVING FROM INFLUX -- {}:{}:{}'.format(db, dbuser, dbpswd))
+    print('-- RETRIEVING FROM INFLUX --\n{}\n{}\n{}\n{}'.format(url, dbBucket, dbOrgID, dbToken))
+    dbClient.close()
     return []

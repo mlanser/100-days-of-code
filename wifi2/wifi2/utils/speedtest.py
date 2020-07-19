@@ -1,7 +1,7 @@
 import speedtest
 
 from .datastore import save_csv_data, get_csv_data, save_json_data, get_json_data
-from .datastore import save_sqlite_data, get_sqlite_data, save_influx1x_data, get_influx1x_data
+from .datastore import save_sqlite_data, get_sqlite_data, save_influx1x_data, get_influx1x_data, save_influxcloud_data, get_influxcloud_data
 
 _DB_NAME_   = 'WIFI2_data'
 _DB_RETPOL_ = 'autogen'
@@ -90,14 +90,15 @@ def save_speed_data(settings, data):
     elif settings.get('storage').lower() == 'sqlite':
         save_sqlite_data(data, settings.get('host'), _DB_FLDS_['sqlite'], settings.get('dbtable', _DB_TABLE_))
         
-    elif settings.get('storage') == 'Influx1x':
+    elif settings.get('storage').lower() == 'influx1x':
         save_influx1x_data(data, settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_), 
                            settings.get('dbname', _DB_NAME_), settings.get('dbuser'), settings.get('dbpswd')
                           )
         
-    #elif settings.get('storage') == 'InfluxCloud':
-    #    save_influxcloud_data(data, settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_), 
-    #        settings.get('dbname', _DB_NAME_), settings.get('dbretpol', _DB_RETPOL_), settings.get('dbuser'), settings.get('dbtoken'))
+    elif settings.get('storage').lower() == 'influx2x':
+        save_influxcloud_data(data, settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_),
+                              settings.get('dbbucket', None), settings.get('dborgid', None), settings.get('dbtoken', None)
+                             )
         
     else:    
         raise OSError("Data storage type '{}' is not supported!".format(str(settings['storage'])))
@@ -127,21 +128,17 @@ def get_speed_data(settings, numRecs, first=True):
     elif settings.get('storage').lower() == 'sqlite':
         return get_sqlite_data(settings.get('host'), _DB_FLDS_['raw'], settings.get('dbtable', _DB_TABLE_), _DB_ORDER_, numRecs, first)
         
-    elif settings.get('storage') == 'Influx1x':
+    elif settings.get('storage').lower() == 'influx1x':
         return get_influx1x_data(settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_),  
                                settings.get('dbname', _DB_NAME_), settings.get('dbuser'), settings.get('dbpswd'),
                                numRecs, first
                               )
         
-    #_PP_.pprint(_DB_FLDS_)
-    #_PP_.pprint(_DB_TABLE_)
-    #_PP_.pprint(_DB_ORDER_)
-    #elif settings.get('storage') == 'InfluxCloud':
-    #    return get_influx_data(settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_), 
-    #                           settings.get('dbname', _DB_NAME_), settings.get('dbretpol', _DB_RETPOL_), 
-    #                           settings.get('dbuser'), settings.get('dbpswd'),
-    #                           numRecs, first
-    #                          )
+    elif settings.get('storage').lower() == 'influx2x':
+        return get_influxcloud_data(settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_),
+                                    settings.get('dbbucket', None), settings.get('dborgid', None), settings.get('dbtoken', None), 
+                                    numRecs, first
+                                   )
         
     else:    
         raise OSError("Data storage type '{}' is not supported!".format(str(settings.get('storage'))))
