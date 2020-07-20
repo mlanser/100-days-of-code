@@ -490,7 +490,6 @@ def save_influxcloud_data(dataIn, url, tblFlds, tblName, dbBucket=None, dbOrgID=
         raise ValueError("Missing bucket name/ID!")
         
     dbClient = _connect_influxcloud_server(url, dbToken)
-    
     dbWriter = dbClient.write_api(write_options=SYNCHRONOUS)
     
     dataPts = []
@@ -502,7 +501,30 @@ def save_influxcloud_data(dataIn, url, tblFlds, tblName, dbBucket=None, dbOrgID=
     dbClient.close()
     
 
-def get_influxcloud_data(url, tblFlds, tblName, dbBucket=None, dbOrgID=None, dbToken=None, numRecs=1, first=True):
+def get_influxcloud_data(url, tblFlds, tblName, dbBucket=None, dbOrgID=None, dbToken=None, hours=1):
+    
+    def _process_table(table):
+        record = {'timestamp': None, 'location': None, 'locationTZ': None, 'ping': None, 'upload': None, 'download': None}
+        for row in table:
+            if record['timestamp'] is None:
+                record.update(timestamp = row.values['_time'].isoformat())
+                
+            if record['location'] is None:
+                record.update(location = row.values['location'])
+                
+            if record['locationTZ'] is None:
+                record.update(locationTZ = row.values['locationTZ'])
+            
+            fld = row.get_field()
+            val = row.get_value()
+            if record['ping'] is None and fld == 'ping':
+                record.update(ping = val)
+            elif record['upload'] is None and fld == 'upload':
+                record.update(upload = val)
+            elif record['download'] is None and fld == 'download':
+                record.update(download = val)
+            
+        return record
     
     if dbToken is None:
         raise ValueError("Missing token!")
@@ -514,13 +536,18 @@ def get_influxcloud_data(url, tblFlds, tblName, dbBucket=None, dbOrgID=None, dbT
         raise ValueError("Missing bucket name/ID!")
         
     dbClient = _connect_influxcloud_server(url, dbToken)
+    dbReader = dbClient.query_api()
+
+    query = ('from(bucketID: "{0}") |> range(start: -{2}h) '
+             '|> filter(fn: (r) => r._measurement == "{1}") '
+             '|> filter(fn: (r) => r["_field"] == "download" or r["_field"] == "ping" or r["_field"] == "upload") '
+             '|> group(columns: ["_time"])'
+            ).format(dbBucket, tblName, hours)
+    tables = dbReader.query(query=query, org=dbOrgID)
     
-    query = f'from(bucket: \"{dbBucket}\") |> range(start: -6h)'
-    data = dbClient.query_api().query(query, org=dbOrgID)
-    
-    print(numRecs)
-    print(first)
-    _PP_.pprint(data)
-    print('-- RETRIEVING FROM INFLUX --\n{}\n{}\n{}\n{}'.format(url, dbBucket, dbOrgID, dbToken))
+    data = []
+    for table in tables:
+        data.append(_process_table(table))
+        
     dbClient.close()
-    return []
+    return data

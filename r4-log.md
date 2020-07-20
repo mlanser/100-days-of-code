@@ -135,3 +135,7 @@ Started on [Sunday June 14, 2020].
 
 ### R4D33 - 18JUL2020
 * Starting integration with InfluxDB Cloud.
+
+### R4D34 - 19JUL2020
+* Finished integration with InfluxDB Cloud.
+* Started integration with MariaDB

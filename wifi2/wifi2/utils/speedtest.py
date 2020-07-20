@@ -110,7 +110,10 @@ def get_speed_data(settings, numRecs, first=True):
     Args:
         settings: List with data store settings
         numRecs:  Number of records to retrieve
+                  NOTE: for InfluxDB v2.x this represents last X hours
+        
         first:    If TRUE, retrieve first 'numRec' records, else retrieve last 'numRec' records
+                  NOTE: this is not used for InfluxDB v2.x
     
     Returns:
         List of data records
@@ -137,7 +140,7 @@ def get_speed_data(settings, numRecs, first=True):
     elif settings.get('storage').lower() == 'influx2x':
         return get_influxcloud_data(settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_),
                                     settings.get('dbbucket', None), settings.get('dborgid', None), settings.get('dbtoken', None), 
-                                    numRecs, first
+                                    numRecs
                                    )
         
     else:    
