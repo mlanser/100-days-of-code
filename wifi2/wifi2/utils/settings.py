@@ -6,6 +6,7 @@ import configparser
 _CSV_      = 'csv'
 _JSON_     = 'json'
 _SQLite_   = 'sqlite'
+_SQL_      = 'sql'
 _Influx1x_ = 'influx1x'
 _Influx2x_ = 'influx2x'
 
@@ -126,28 +127,28 @@ def _validate_data_settings(settings):
 #   Ex:     ~/speedtest.csv
 #           ~/speedtest.json
 #           ~/wifi2.sqlite              - SQLite file can hold several tables
-#           http://localhost:8086       - Influx db server can hold several databases. Should also
-#                                         include port and protocal (http/https)
+#           http://localhost:8086       - SQL and Influx db servera can hold several databases. Should
+#                                         also include port and protocal (http/https)
 #
-# dbtable = <db table name>             - Used for SQLite and InfluxDB 1.x, v2.x
-# dbname = <db name>                    - Used for SQLite and InfluxDB 1.x
-# dbuser = <db user w proper access>    - Used for InfluxDB 1.x
-# dbpswd = <db user password>           - Used for InfluxDB 1.x
+# dbtable = <db table name>             - Used for SQL, SQLite, and InfluxDB 1.x, v2.x
+# dbname = <db name>                    - Used for SQL, SQLite, and InfluxDB 1.x
+# dbuser = <db user w proper access>    - Used for SQL and InfluxDB 1.x
+# dbpswd = <db user password>           - Used for SQL and InfluxDB 1.x
 # dbretpol = <db retention policy>      - Used for InfluxDB 2.x
 # dbbucket = <bucket ID>                - Used for InfluxDB 2.x
 # dbtoken = <token instead of pswd>     - Used for InfluxDB 2.x
 # dborgid = <organization ID>           - Used for InfluxDB 2.x
 #
 def _get_speedtest_settings(ctxGlobals):
-    dbUser   = None
-    dbPswd   = None
-    dbOrgID  = None             # InfluxDB Org ID
-    dbBucket = None             # InfluxDB Org ID
-    dbToken  = None             # May be used instead of user pswd
-    dbTable  = 'SpeedTest'
-    dbName   = 'WIFI2_data'
-    dbRetPol = 'autogen'        # Default set by InfluxDB
-
+    defaults = {
+        'count': 1, 'sleep': 60, 'threads': 'multi', 'unit': 'bits', 'share': False, 
+        'location': None, 'locationTZ': None, 
+        'host': None, 'ssl': False, 
+        'dbuser': 'wifi2_app', 'dbpswd': None, 'dbtoken': None, 
+        'dbtable': 'SpeedTest', 'dbname': 'WIFI2_data', 'dbretpol': 'autogen',
+        'dbbucket': None, 'dborgid': None,
+    }
+    
     count = click.prompt(
         "Enter default for number of test cycle runs:",
         type=click.IntRange(ctxGlobals['appMinRuns'], ctxGlobals['appMaxRuns'], clamp=True),
@@ -190,98 +191,156 @@ def _get_speedtest_settings(ctxGlobals):
     
     storage = click.prompt(
         "Enter data storage type", 
-        type=click.Choice(['CSV', 'JSON', 'SQLite', 'Influx1x', 'Influx2x'], case_sensitive=False),
+        type=click.Choice(['CSV', 'JSON', 'SQLite', 'SQL', 'Influx1x', 'Influx2x'], case_sensitive=False),
         default='SQLite',
         show_default=True,
     )
+    
     if storage.lower() == _CSV_:
-        host = click.prompt(
-            "Enter path to CSV data file",
-            type=click.Path(),
-            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbTable.lower() + '.csv'),
-            show_default=True,
-        )
+        settings = _get_speedtest_settings_CSV(defaults, ctxGlobals)
+        
     elif storage.lower() == _JSON_:
-        host = click.prompt(
-            "Enter path to JSON data file",
-            type=click.Path(),
-            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbTable.lower() + '.json'),
-            show_default=True,
-        )
+        settings = _get_speedtest_settings_JSON(defaults, ctxGlobals)
+        
     elif storage.lower() == _SQLite_:
-        host = click.prompt(
-            "Enter path to SQLite database.\nNote: ':memory:' is not supported.",
-            type=click.Path(),
-            default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbName.lower() + '.sqlite'),
-            show_default=True,
-        )
-        dbTable = click.prompt(
-            "Enter name of database table",
-            default=dbtable,
-            show_default=True,
-        )
+        settings = _get_speedtest_settings_SQLite(defaults, ctxGlobals)
+        
+    elif storage.lower() == _SQL_:
+        settings = _get_speedtest_settings_SQL(defaults, ctxGlobals)
+        
     elif storage.lower() == _Influx1x_:
-        host = click.prompt("Enter database URL (protocal, host, and port)",
-            default='http://localhost:8086',
-            show_default=True,
-        )
-        dbUser = click.prompt("Enter database user name")
-        dbPswd = click.prompt("Enter database user password", default='', hide_input=True)
-        dbToken = click.prompt("Enter JWT token", default='')
-        dbTable = click.prompt(
-            "Enter name of database table",
-            default=dbTable,
-            show_default=True,
-        )
-        dbName = click.prompt(
-            "Enter name of database",
-            default=dbName,
-            show_default=True,
-        )
-        dbRetPol = click.prompt(
-            "Enter name of database retention policy",
-            default=dbRetPol,
-            show_default=True,
-        )
+        settings = _get_speedtest_settings_Influx1x(defaults, ctxGlobals)
+        
     elif storage.lower() == _Influx2x_:
-        host = click.prompt("Enter database URL (protocal, host, and port)",
-            default='http://localhost:8086',
-            show_default=True,
-        )
-        dbToken = click.prompt("Enter InfluxDB token", default='')
-        dbTable = click.prompt(
-            "Enter name of database table",
-            default=dbtable,
-            show_default=True,
-        )
-        dbBucket = click.prompt("Enter InfluxDB 'bucket' ID", default='')
-        dbOrgID = click.prompt("Enter InfluxDB org ID", default='')
+        settings = _get_speedtest_settings_Influx2x(defaults, ctxGlobals)
+        
     else:
         raise ValueError("Invalid storage type '{}'".format(storage))
         
-    settings = {
-        'speedtest': {
-            'count': count,
-            'sleep': sleep,
-            'threads': 'multi' if threads.lower() != 'single' else 'single',
-            'unit': 'bits' if unit.lower() != 'bytes' else 'bytes',
-            'share': False if share.lower() != 'yes' else True, 
-            'location': location,
-            'locationTZ': locationTZ,
-            'host': host,
-            'ssl': False if ssl.lower() != 'yes' else True, 
-            'dbuser': dbUser,       # Should NOT be 'root' account in PROD
-            'dbpswd': dbPswd,       # @TODO NEED TO ENCRYPT SOMEHOW!!!
-            'dbtoken': dbToken,     # Preferred!
-            'dbtable': dbTable,
-            'dbname': dbName,
-            'dbretpol': dbRetPol,
-            'dbbucket': dbBucket,
-            'dborgid': dbOrgID,
-            }
-        }
+    settings.update([
+        ('count', count),
+        ('sleep', sleep),
+        ('threads', ('multi' if threads.lower() != 'single' else 'single')),
+        ('unit', ('bits' if unit.lower() != 'bytes' else 'bytes')),
+        ('share', (False if share.lower() != 'yes' else True)), 
+        ('location', location),
+        ('locationTZ', locationTZ),
+    ])
+
+    return {'speedtest': settings}
+
+
+def _get_speedtest_settings_CSV(defaults, ctxGlobals):
+    host = click.prompt(
+        "Enter path to CSV data file",
+        type=click.Path(),
+        default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbTable.lower() + '.csv'),
+        show_default=True,
+    )
+
+    return defaults.update([('host', host)])
     
-    return settings
+    
+def _get_speedtest_settings_JSON(defaults, ctxGlobals):
+    host = click.prompt(
+        "Enter path to JSON data file",
+        type=click.Path(),
+        default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbTable.lower() + '.json'),
+        show_default=True,
+    )
+
+    return defaults.update([('host', host)])
+
+
+def _get_speedtest_settings_SQLite(defaults, ctxGlobals):
+    host = click.prompt(
+        "Enter path to SQLite database.\nNote: ':memory:' is not supported.",
+        type=click.Path(),
+        default=os.path.join(click.get_app_dir(ctxGlobals['appName']), dbName.lower() + '.sqlite'),
+        show_default=True,
+    )
+    dbtable = click.prompt(
+        "Enter name of database table",
+        default=defaults['dbtable'],
+        show_default=True,
+    )
+
+    return defaults.update([('host', host), ('dbtable', dbtable)])
+
+
+def _get_speedtest_settings_SQL(defaults, ctxGlobals):
+    host = click.prompt("Enter database URL (protocal, host, and port)",
+        default='http://localhost:8086',
+        show_default=True,
+    )
+    dbuser = click.prompt("Enter database user name")
+    dbpswd = click.prompt("Enter database user password", default='', hide_input=True)
+    dbtoken = click.prompt("Enter JWT token", default='')
+    dbtable = click.prompt(
+        "Enter name of database table",
+        default=dbTable,
+        show_default=True,
+    )
+    dbname = click.prompt(
+        "Enter name of database",
+        default=dbname,
+        show_default=True,
+    )
+
+    return defaults.update([
+        ('host', host), ('dbtable', dbtable), ('dbname', dbname), 
+        ('dbuser', dbuser), ('dbpswd', dbpswd), ('dbtoken', dbtoken)
+    ])
+
+
+def _get_speedtest_settings_Influx1x(defaults, ctxGlobals):
+    host = click.prompt("Enter database URL (protocal, host, and port)",
+        default='http://localhost:8086',
+        show_default=True,
+    )
+    dbuser = click.prompt("Enter database user name")
+    dbpswd = click.prompt("Enter database user password", default='', hide_input=True)
+    dbtoken = click.prompt("Enter JWT token", default='')
+    dbtable = click.prompt(
+        "Enter name of database table",
+        default=dbtable,
+        show_default=True,
+    )
+    dbname = click.prompt(
+        "Enter name of database",
+        default=dbname,
+        show_default=True,
+    )
+    dbretpol = click.prompt(
+        "Enter name of database retention policy",
+        default=dbretpol,
+        show_default=True,
+    )
+
+    return defaults.update([
+        ('host', host), ('dbtable', dbtable), ('dbname', dbname), ('dbretpol', dbretpol),
+        ('dbuser', dbuser), ('dbpswd', dbpswd), ('dbtoken', dbtoken)
+    ])
+
+
+def _get_speedtest_settings_Influx2x(defaults, ctxGlobals):
+    host = click.prompt("Enter database URL (protocal, host, and port)",
+        default='http://localhost:8086',
+        show_default=True,
+    )
+    dbtoken = click.prompt("Enter InfluxDB token", default='')
+    dbtable = click.prompt(
+        "Enter name of database table",
+        default=dbtable,
+        show_default=True,
+    )
+    dbbucket = click.prompt("Enter InfluxDB 'bucket' ID", default='')
+    dborgid = click.prompt("Enter InfluxDB org ID", default='')
+        
+    return defaults.update(
+        ('host', host), ('dbtable', dbtable), ('dbbucket', dbbucket),
+        ('dborgid', dborgid), ('dbtoken', dbtoken)
+    )
 
 
 def _validate_speedtest_settings(settings):

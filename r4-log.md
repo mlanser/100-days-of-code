@@ -139,3 +139,9 @@ Started on [Sunday June 14, 2020].
 ### R4D34 - 19JUL2020
 * Finished integration with InfluxDB Cloud.
 * Started integration with MariaDB
+
+### R4D35 - 20JUL2020
+* Adding SQL support to WIFI2 app.
+* Redesigning data structure for SQL support. Will add indexed ID col and also index timestamp cols.
+* Refactoring code to make better use of classes, etc.
+

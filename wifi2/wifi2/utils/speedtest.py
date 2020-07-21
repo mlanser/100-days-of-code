@@ -1,7 +1,10 @@
 import speedtest
 
-from .datastore import save_csv_data, get_csv_data, save_json_data, get_json_data
-from .datastore import save_sqlite_data, get_sqlite_data, save_influx1x_data, get_influx1x_data, save_influxcloud_data, get_influxcloud_data
+from .datastore.csv import save_data as save_csv_data, get_data as get_csv_data
+from .datastore.json import save_data as save_json_data, get_data as get_json_data
+from .datastore.sqlite import save_data as save_sqlite_data, get_data as get_sqlite_data
+from .datastore.influx1x import save_data as save_influx1x_data, get_data as get_influx1x_data
+from .datastore.influx2x import save_data as save_influxcloud_data, get_data as get_influxcloud_data
 
 _DB_NAME_   = 'WIFI2_data'
 _DB_RETPOL_ = 'autogen'
@@ -11,7 +14,8 @@ _DB_FLDS_   = {
     'raw':    {'timestamp': str, 'location': str, 'locationTZ': str, 'ping': float, 'download': float, 'upload': float},
     'csv':    {'timestamp': None, 'location': None, 'locationTZ': None, 'ping': None, 'download': None, 'upload': None},
     'json':   {'timestamp': None, 'location': None, 'locationTZ': None, 'ping': None, 'download': None, 'upload': None},
-    'sqlite': {'timestamp': 'TEXT', 'location': 'TEXT', 'locationTZ': 'TEXT', 'ping': 'REAL', 'download': 'REAL', 'upload': 'REAL'},
+    'sqlite': {'timestamp': 'TEXT|idx', 'location': 'TEXT|idx', 'locationTZ': 'TEXT|idx', 'ping': 'REAL', 'download': 'REAL', 'upload': 'REAL'},
+    'sql':    {'timestamp': 'TEXT|idx', 'location': 'TEXT|idx', 'locationTZ': 'TEXT|idx', 'ping': 'REAL', 'download': 'REAL', 'upload': 'REAL'},
     'influx': {'timestamp': 'time', 'location': 'tag', 'locationTZ': 'tag', 'ping': 'field', 'download': 'field', 'upload': 'field'},
 }
 
