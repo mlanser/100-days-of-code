@@ -1,6 +1,6 @@
 # #100DaysOfCode Log - Round 4 - [Martin Lanser]
 
-This is the official log for the 4th part of my #100DaysOfCode challenge. The objective for R4 is to build an actual application using a frmework such as [Cement](https://builtoncement.com/) or [Click](https://palletsprojects.com/p/click/).
+This is the official log for the 4th part of my #100DaysOfCode challenge. The objective for R4 is to build an actual application using a framework such as [Cement](https://builtoncement.com/) or [Click](https://palletsprojects.com/p/click/).
 
 Started on [Sunday June 14, 2020].
 
@@ -142,6 +142,9 @@ Started on [Sunday June 14, 2020].
 
 ### R4D35 - 20JUL2020
 * Adding SQL support to WIFI2 app.
-* Redesigning data structure for SQL support. Will add indexed ID col and also index timestamp cols.
-* Refactoring code to make better use of classes, etc.
+* Redesigning data structure for SQL support. Adding col indexing, etc.
+* Refactoring code to make better use of modules, classes, etc.
 
+### R4D36 - 21JUL2020
+* More refactoring.
+* Start work on R5 (see sep log).

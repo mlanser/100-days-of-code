@@ -1,8 +1,12 @@
 import speedtest
 
+import http.client
+from datetime import datetime
+
 from .datastore.csv import save_data as save_csv_data, get_data as get_csv_data
 from .datastore.json import save_data as save_json_data, get_data as get_json_data
 from .datastore.sqlite import save_data as save_sqlite_data, get_data as get_sqlite_data
+from .datastore.sql import save_data as save_sql_data, get_data as get_sql_data
 from .datastore.influx1x import save_data as save_influx1x_data, get_data as get_influx1x_data
 from .datastore.influx2x import save_data as save_influxcloud_data, get_data as get_influxcloud_data
 
@@ -14,7 +18,6 @@ _DB_FLDS_   = {
     'raw':    {'timestamp': str, 'location': str, 'locationTZ': str, 'ping': float, 'download': float, 'upload': float},
     'csv':    {'timestamp': None, 'location': None, 'locationTZ': None, 'ping': None, 'download': None, 'upload': None},
     'json':   {'timestamp': None, 'location': None, 'locationTZ': None, 'ping': None, 'download': None, 'upload': None},
-    'sqlite': {'timestamp': 'TEXT|idx', 'location': 'TEXT|idx', 'locationTZ': 'TEXT|idx', 'ping': 'REAL', 'download': 'REAL', 'upload': 'REAL'},
     'sql':    {'timestamp': 'TEXT|idx', 'location': 'TEXT|idx', 'locationTZ': 'TEXT|idx', 'ping': 'REAL', 'download': 'REAL', 'upload': 'REAL'},
     'influx': {'timestamp': 'time', 'location': 'tag', 'locationTZ': 'tag', 'ping': 'field', 'download': 'field', 'upload': 'field'},
 }
@@ -48,20 +51,33 @@ def run_speedtest(settings):
     threads = None if settings.get('threads', None).lower() != 'single' else 1
 
     test = speedtest.Speedtest()
-    test.get_servers(servers)
-    test.get_best_server()
-    test.download(threads=threads)
-    test.upload(threads=threads, pre_allocate=False)
+    response = {
+        'timestamp': datetime.utcnow().isoformat(), 
+        'location': settings.get('location'), 
+        'locationTZ': settings.get('locationTZ'), 
+        'ping': 0.0, 
+        'download': 0.0, 
+        'upload': 0.0
+    }
     
-    if settings.getboolean('share', False):
-        test.results.share()
-        
-    response = test.results.dict()
-    response.update([
-        ('location', settings.get('location')),
-        ('locationTZ', settings.get('locationTZ'))
-    ])
-    
+    try:
+        test.get_servers(servers)
+        test.get_best_server()
+        test.download(threads=threads)
+        test.upload(threads=threads, pre_allocate=False)
+
+        if settings.getboolean('share', False):
+            test.results.share()
+
+        response = test.results.dict()
+        response.update([
+            ('location', settings.get('location')),
+            ('locationTZ', settings.get('locationTZ'))
+        ])
+
+    except http.client.BadStatusLine as e:
+        raise OSError("Unable to run SpeedTest!\n{}".format(e))
+
     return response
 
 
@@ -92,7 +108,12 @@ def save_speed_data(settings, data):
         save_json_data(data, settings.get('host'), _DB_FLDS_['json'])
         
     elif settings.get('storage').lower() == 'sqlite':
-        save_sqlite_data(data, settings.get('host'), _DB_FLDS_['sqlite'], settings.get('dbtable', _DB_TABLE_))
+        save_sqlite_data(data, settings.get('host'), _DB_FLDS_['sql'], settings.get('dbtable', _DB_TABLE_))
+        
+    elif settings.get('storage').lower() == 'sql':
+        save_sql_data(data, settings.get('host'), _DB_FLDS_['sql'], settings.get('dbtable', _DB_TABLE_), 
+                      settings.get('dbname', _DB_NAME_), settings.get('dbuser'), settings.get('dbpswd')
+                     )
         
     elif settings.get('storage').lower() == 'influx1x':
         save_influx1x_data(data, settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_), 
@@ -126,6 +147,12 @@ def get_speed_data(settings, numRecs, first=True):
         OSError: If data store is not supported and/or cannot be accessed.
     """
     
+    #print('\n-- [settings] --')
+    #_PP_.pprint(settings)
+    #print('\n-- [data] ------')
+    #_PP_.pprint(data)
+    #print('----------------\n')
+    
     if settings.get('storage').lower() == 'csv':
         return get_csv_data(settings.get('host'), _DB_FLDS_['raw'], numRecs, first)
         
@@ -134,6 +161,12 @@ def get_speed_data(settings, numRecs, first=True):
         
     elif settings.get('storage').lower() == 'sqlite':
         return get_sqlite_data(settings.get('host'), _DB_FLDS_['raw'], settings.get('dbtable', _DB_TABLE_), _DB_ORDER_, numRecs, first)
+        
+    elif settings.get('storage').lower() == 'sql':
+        return get_sql_data(settings.get('host'), _DB_FLDS_['raw'], settings.get('dbtable', _DB_TABLE_),  
+                               settings.get('dbname', _DB_NAME_), settings.get('dbuser'), settings.get('dbpswd'),
+                               numRecs, first
+                              )
         
     elif settings.get('storage').lower() == 'influx1x':
         return get_influx1x_data(settings.get('host'), _DB_FLDS_['influx'], settings.get('dbtable', _DB_TABLE_),  

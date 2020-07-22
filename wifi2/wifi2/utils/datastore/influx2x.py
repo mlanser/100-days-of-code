@@ -1,42 +1,16 @@
 import os
 
-from datetime import datetime
-from urllib.parse import urlparse, urlsplit
-
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-import pprint
-_PP_ = pprint.PrettyPrinter(indent=4)
+#import pprint
+#_PP_ = pprint.PrettyPrinter(indent=4)
 
 
 # =========================================================
 #             G E N E R I C   F U N C T I O N S
 # =========================================================
-def _process_data(dataIn, fldNames):
-    dataOut = []
-
-    for row in dataIn:
-        # Filter each row to only hold approved keys using dictionary comprehension
-        dataOut.append({key: row[key] for key in fldNames})
-
-    return outData
-
-
-def _make_path(fname):
-    try:
-        path = os.path.dirname(os.path.abspath(fname))
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-    except OSError as e:
-        raise OSError("Failed to create path '{}'!\n{}".format(path, e))
-
-
-# =========================================================
-#        I N F L U X   C L O U D   F U N C T I O N S
-# =========================================================
-def _connect_influxcloud_server(url, dbToken):
+def _connect_server(url, dbToken):
     try:
         dbClient = InfluxDBClient(url=url, token=dbToken)
         
@@ -46,10 +20,9 @@ def _connect_influxcloud_server(url, dbToken):
     return dbClient
 
 
-def _process_influxcloud_data_row(rowIn, tblFlds, tblName):
+def _process_data_row(rowIn, tblFlds, tblName):
     
     point = Point(tblName)
-
     point.time(rowIn['timestamp'], WritePrecision.NS)
     
     for key in tblFlds:
@@ -61,6 +34,9 @@ def _process_influxcloud_data_row(rowIn, tblFlds, tblName):
     return point
 
 
+# =========================================================
+#            S A V E   D A T A   F U N C T I O N S
+# =========================================================
 def save_data(dataIn, url, tblFlds, tblName, dbBucket=None, dbOrgID=None, dbToken=None):
     
     if dbToken is None:
@@ -72,18 +48,21 @@ def save_data(dataIn, url, tblFlds, tblName, dbBucket=None, dbOrgID=None, dbToke
     if dbBucket is None:
         raise ValueError("Missing bucket name/ID!")
         
-    dbClient = _connect_influxcloud_server(url, dbToken)
+    dbClient = _connect_server(url, dbToken)
     dbWriter = dbClient.write_api(write_options=SYNCHRONOUS)
     
     dataPts = []
     for row in dataIn:
-        dataPts.append(_process_influxcloud_data_row(row, tblFlds, tblName))
+        dataPts.append(_process_data_row(row, tblFlds, tblName))
         
     dbWriter.write(dbBucket, dbOrgID, dataPts)
     
     dbClient.close()
     
 
+# =========================================================
+#            G E T   D A T A   F U N C T I O N S
+# =========================================================
 def get_data(url, tblFlds, tblName, dbBucket=None, dbOrgID=None, dbToken=None, hours=1):
     
     def _process_table(table):
@@ -118,7 +97,7 @@ def get_data(url, tblFlds, tblName, dbBucket=None, dbOrgID=None, dbToken=None, h
     if dbBucket is None:
         raise ValueError("Missing bucket name/ID!")
         
-    dbClient = _connect_influxcloud_server(url, dbToken)
+    dbClient = _connect_server(url, dbToken)
     dbReader = dbClient.query_api()
 
     query = ('from(bucketID: "{0}") |> range(start: -{2}h) '

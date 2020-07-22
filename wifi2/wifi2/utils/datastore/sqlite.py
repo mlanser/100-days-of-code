@@ -1,14 +1,14 @@
 import os
 import sqlite3
 
-import pprint
-_PP_ = pprint.PrettyPrinter(indent=4)
+#import pprint
+#_PP_ = pprint.PrettyPrinter(indent=4)
 
 
 # =========================================================
 #             G E N E R I C   F U N C T I O N S
 # =========================================================
-def _connect_sqlite(dbFName, force=True):
+def _connect_server(dbFName, force=True):
     if not os.path.exists(dbFName):
         if force:
             try:
@@ -31,7 +31,7 @@ def _connect_sqlite(dbFName, force=True):
     return dbConn
 
 
-def _exist_sqlite_table(dbCur, tblName):
+def _exist_table(dbCur, tblName):
     """Check if a table with a given name exists.
 
     Note that SQLIte3 stores table names in the 'sqlite_master' table.
@@ -49,7 +49,7 @@ def _exist_sqlite_table(dbCur, tblName):
     return True if dbCur.fetchone()[0] == 1 else False
 
 
-def _create_sqlite_table(dbCur, tblName, fldNamesWithTypes):
+def _create_table(dbCur, tblName, fldNamesWithTypes):
     """Create table with fields.
 
     Args:
@@ -72,7 +72,6 @@ def _create_sqlite_table(dbCur, tblName, fldNamesWithTypes):
     # only create indexed columns as indicated in 'fldNamesWithTypes'.
     for (key, val) in fldNamesWithTypes.items():
         if _split_type_idx(val)[1]:
-            #print("CREATE INDEX IF NOT EXIST idx_{0}_{1} ON {0}({1});".format(tblName, key))
             dbCur.execute("CREATE INDEX idx_{0}_{1} ON {0}({1});".format(tblName, key))
 
 
@@ -90,11 +89,11 @@ def save_data(data, dbFName, tblFlds, tblName, force=True):
         force:   If TRUE, SQLite file will be created if it doesn't exist
     """
 
-    dbConn = _connect_sqlite(dbFName, force)
+    dbConn = _connect_server(dbFName, force)
     dbCur = dbConn.cursor()
 
-    if not _exist_sqlite_table(dbCur, tblName):
-        _create_sqlite_table(dbCur, tblName, tblFlds)
+    if not _exist_table(dbCur, tblName):
+        _create_table(dbCur, tblName, tblFlds)
     
     fldNames = tblFlds.keys()
     flds = ','.join(fldNames)
@@ -143,7 +142,7 @@ def get_data(dbFName, tblFlds, tblName, orderBy=None, numRecs=1, first=True):
         outStr = 'ASC' if len(parts) == 1 else parts[1].upper()
         return 'ORDER BY {} {}'.format(parts[0], _flip_orderby(outStr, flip))
     
-    dbConn = _connect_sqlite(dbFName)
+    dbConn = _connect_server(dbFName)
     dbCur = dbConn.cursor()
     
     fldNames = tblFlds.keys()
