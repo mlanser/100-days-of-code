@@ -8,3 +8,6 @@ Started on [Tuesday July 21, 2020].
 
 ### R5D1 - 21JUL2020
 * Create 'DataStore' application folder/stub.
+
+### R5D2 - 22JUL2020
+* Reviewing some Flask tutorials.
