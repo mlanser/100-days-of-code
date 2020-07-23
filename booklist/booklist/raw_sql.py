@@ -2,7 +2,7 @@
 import sqlite3
 
 # connects it to the books-collection database
-conn = sqlite3.connect('booklist.db')
+conn = sqlite3.connect('_temp_booklist.db')
 
 # creates the cursor
 c = conn.cursor()

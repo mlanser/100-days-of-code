@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from db_setup import Base, Book
 
 # Connect to Database and create database session
-engine = create_engine('sqlite:///booklist.db')
+engine = create_engine('sqlite:///_temp_booklist.db')
 Base.metadata.bind = engine
 
 DBSession = sessionmaker(bind=engine)

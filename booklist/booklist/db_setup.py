@@ -27,6 +27,6 @@ class Book(Base):
 
 
 # creates a create_engine instance at the bottom of the file
-engine = create_engine('sqlite:///booklist.db')
+engine = create_engine('sqlite:///_temp_booklist.db')
 
 Base.metadata.create_all(engine)
