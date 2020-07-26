@@ -12,11 +12,14 @@ Started on [Tuesday July 21, 2020].
 ### R5D2 - 22JUL2020
 * Reviewing some Flask tutorials.
 
-### R5D2 - 23JUL2020
+### R5D3 - 23JUL2020
 * Learning more about Flask.
 
-### R5D2 - 24JUL2020
+### R5D4 - 24JUL2020
 * Still reviewing Flask tutorials.
 
-### R5D2 - 25JUL2020
+### R5D5 - 25JUL2020
 * Started new 'Flaskr' Flask tutorial.
+
+### R5D6 - 26JUL2020
+* Continuing Flask tutorial.
