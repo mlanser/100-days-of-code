@@ -1,16 +1,21 @@
 import os
 
 from flask import Flask
+from flask_debugtoolbar import DebugToolbarExtension
 
 
 def create_app(test_config=None):
     """Create and configure an instance of the Flask application."""
     app = Flask(__name__, instance_relative_config=True)
+    
     app.config.from_mapping(
         # a default secret that should be overridden by instance config
         SECRET_KEY="dev",
         # store the database in the instance folder
         DATABASE=os.path.join(app.instance_path, "flaskr.sqlite"),
+        # Flask Debug Toolbar defaults
+        DEBUG_TB_ENABLED=True,
+        DEBUG_TB_PROFILER_ENABLED=True,
     )
 
     if test_config is None:
@@ -25,10 +30,6 @@ def create_app(test_config=None):
         os.makedirs(app.instance_path)
     except OSError:
         pass
-
-    @app.route("/hello")
-    def hello():
-        return "Hello, World!"
 
     # register the database commands
     from flaskr import db
@@ -47,4 +48,12 @@ def create_app(test_config=None):
     # the tutorial the blog will be the main index
     app.add_url_rule("/", endpoint="index")
 
+    # Flask Debug Toolbar is only enabled in debug mode
+    #app.debug = True
+    
+    #app.config['DEBUG_TB_HOSTS'] = ['0.0.0.0:3000', '127.0.0.1', 'port-3000.flask-tools-mlanser.codeanyapp.com']
+    #app.config['DEBUG_TB_PROFILER_ENABLED'] = True
+    
+    toolbar = DebugToolbarExtension(app)
+    
     return app
