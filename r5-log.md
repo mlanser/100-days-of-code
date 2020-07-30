@@ -37,3 +37,6 @@ Started on [Tuesday July 21, 2020].
 * Flask-Login
 * Flask-Mail
 * Flask-WTF
+
+### R5D9 - 29JUL2020
+* Continuing with experiments from 28JUL2020

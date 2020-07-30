@@ -1,0 +1,5 @@
+# -----------------
+# Core Flask variables
+# -----------------
+FLASK_APP=microblog.py
+FLASK_ENV=development
