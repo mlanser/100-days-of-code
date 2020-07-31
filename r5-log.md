@@ -40,3 +40,6 @@ Started on [Tuesday July 21, 2020].
 
 ### R5D9 - 29JUL2020
 * Continuing with experiments from 28JUL2020
+
+### R5D10 - 30JUL2020
+* More work on 'Microblog' tutorial started on 28JUL2020
