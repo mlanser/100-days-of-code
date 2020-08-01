@@ -47,3 +47,6 @@ Started on [Tuesday July 21, 2020].
 ### R5D11 - 31JUL2020
 * More work on 'Microblog' tutorial started on 28JUL2020
 
+### R5D12 - 01AUG2020
+* More work on 'Microblog' tutorial started on 28JUL2020
+
