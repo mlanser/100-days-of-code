@@ -53,3 +53,6 @@ Started on [Tuesday July 21, 2020].
 ### R5D13 - 02AUG2020
 * More work on 'Microblog' tutorial started on 28JUL2020
 
+### R5D14 - 03AUG2020
+* More work on 'Microblog' tutorial started on 28JUL2020
+
