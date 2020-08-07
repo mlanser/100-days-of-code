@@ -20,15 +20,15 @@ msgstr ""
 
 #: app/__init__.py:21
 msgid "Please log in to access this page."
-msgstr ""
+msgstr "Vanligen logga in"
 
 #: app/email.py:22
 msgid "[Microblog] Reset Your Password"
-msgstr ""
+msgstr "Blah blah passord"
 
 #: app/forms.py:11 app/forms.py:18 app/forms.py:51
 msgid "Username"
-msgstr ""
+msgstr "Anvandarnamn"
 
 #: app/forms.py:12 app/forms.py:20 app/forms.py:43
 msgid "Password"
@@ -36,11 +36,11 @@ msgstr ""
 
 #: app/forms.py:13
 msgid "Remember Me"
-msgstr ""
+msgstr "Kom ihag mig"
 
 #: app/forms.py:14 app/routes.py:74 app/templates/login.html:5
 msgid "Sign In"
-msgstr ""
+msgstr "Logga in"
 
 #: app/forms.py:19 app/forms.py:38
 msgid "Email"

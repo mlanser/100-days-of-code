@@ -58,3 +58,11 @@ Started on [Tuesday July 21, 2020].
 
 ### R5D15 - 04AUG2020
 * More work on 'Microblog' tutorial started on 28JUL2020
+
+### R5D15 - 05AUG2020
+* More work on 'Microblog' tutorial started on 28JUL2020
+* Focus on translations
+
+### R5D15 - 04AUG2020
+* More work on 'Microblog' tutorial started on 28JUL2020
+* Focus on connecting to external services using Ajax
