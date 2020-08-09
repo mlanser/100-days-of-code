@@ -59,10 +59,17 @@ Started on [Tuesday July 21, 2020].
 ### R5D15 - 04AUG2020
 * More work on 'Microblog' tutorial started on 28JUL2020
 
-### R5D15 - 05AUG2020
+### R5D16 - 05AUG2020
 * More work on 'Microblog' tutorial started on 28JUL2020
 * Focus on translations
 
-### R5D15 - 04AUG2020
+### R5D17 - 06AUG2020
 * More work on 'Microblog' tutorial started on 28JUL2020
 * Focus on connecting to external services using Ajax
+
+### R5D18 - 07AUG2020
+* Finished work on microblog tutorialMore
+* APIs,, better code/project structure, etc.
+
+### R5D19 - 08AUG2020
+* Cleanup and prep for new project
