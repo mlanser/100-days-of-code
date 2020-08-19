@@ -1,2 +1,4 @@
 ansible.cfg
 ansible.hosts
+ansible.vault.pswd
+vars/
