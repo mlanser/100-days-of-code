@@ -116,7 +116,7 @@ def save_data(data, dbFName, tblFlds, tblName, force=True):
                       [row[key] for key in fldNames])
         
     try:
-        cursor.execute("some MariaDB query"))
+        cursor.execute("some MariaDB query")
     except mariadb.Error as e:
         print(f"Error: {e}")
     
